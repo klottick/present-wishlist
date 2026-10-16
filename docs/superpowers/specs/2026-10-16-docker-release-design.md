@@ -1,6 +1,6 @@
 # Prebuilt Docker release
 
-Date: 2026-10-16. Status: proposed; awaiting written-spec approval.
+Date: 2026-10-16. Status: approved by the user; implementation plan awaiting review.
 
 ## Goal and agreed constraints
 

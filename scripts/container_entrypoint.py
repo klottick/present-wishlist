@@ -14,6 +14,11 @@ def main() -> int:
     os.umask(0o077)
     sys.path.insert(0, str(ROOT / "backend"))
     os.environ["DJANGO_SETTINGS_MODULE"] = "project.release_settings"
+    # Interpret overrides relative to the caller once, before changing cwd.
+    # Export them too: exec starts a fresh interpreter for release_wsgi.
+    for key in ("FAMILY_CONFIG_PATH", "WISHLIST_DB_PATH", "FRONTEND_DIST_PATH"):
+        if key in os.environ:
+            os.environ[key] = str(Path(os.environ[key]).resolve())
 
     import django
     from django.conf import settings

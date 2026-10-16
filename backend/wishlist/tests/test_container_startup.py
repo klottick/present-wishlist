@@ -73,6 +73,27 @@ class ContainerStartupTests(TestCase):
         self.assertNotIn("--reload", argv)
         self.assertEqual(list(self.data.iterdir()), [])
 
+    def test_relative_paths_are_normalized_before_working_directory_changes(self):
+        driver = DRIVER.replace(
+            "events.append(name)",
+            """events.append(name)
+    from django.conf import settings
+    from pathlib import Path
+    assert Path(settings.FAMILY_CONFIG_PATH).is_absolute()
+    assert Path(settings.DATABASES['default']['NAME']).is_absolute()
+    assert Path(settings.FRONTEND_DIST_PATH).is_absolute()
+    assert Path(os.environ['FAMILY_CONFIG_PATH']).is_absolute()
+    assert Path(os.environ['WISHLIST_DB_PATH']).is_absolute()
+    assert Path(os.environ['FRONTEND_DIST_PATH']).is_absolute()
+    assert Path(settings.FAMILY_CONFIG_PATH).is_file()
+    assert Path(settings.FRONTEND_DIST_PATH, 'index.html').is_file()""")
+        env = dict(os.environ, ENTRYPOINT=str(SCRIPT), PYTHONPATH=str(ROOT / "backend"),
+                   DJANGO_SECRET_KEY=self.secret, FAMILY_CONFIG_PATH="family.yaml",
+                   FRONTEND_DIST_PATH="dist", WISHLIST_DB_PATH="data/family.sqlite3")
+        result = subprocess.run([sys.executable, "-c", driver], cwd=self.root, env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["code"], 0)
+
     def test_preflight_failure_prevents_database_commands(self):
         for value in (self.root / "missing.yaml", self.root):
             with self.subTest(config=value):

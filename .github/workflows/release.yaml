@@ -38,7 +38,7 @@ jobs:
         run: |
           set -euo pipefail
           gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" --jq '{release: .}' > "$RUNNER_TEMP/current-release.json"
-          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq 'add' > "$RUNNER_TEMP/releases.json"
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -e 'add' > "$RUNNER_TEMP/releases.json"
           python3 scripts/release_metadata.py --event "$RUNNER_TEMP/current-release.json" \
             --releases "$RUNNER_TEMP/releases.json" --bundle-dir "$RUNNER_TEMP/install-preview" >> "$GITHUB_OUTPUT"
       - name: Verify release application
@@ -60,6 +60,13 @@ jobs:
       image: ghcr.io/klottick/present-wishlist
       version: ${{ needs.prepare.outputs.version }}
       smoke-command: python3 scripts/smoke_container.py --image "$IMAGE" --platform "$PLATFORM"
+      # A failed-job retry can reuse old prepare outputs after newer releases.
+      # Refresh the version guard in this job on every attempt, under the lock.
+      pre-publish-command: |
+        gh api "repos/$GITHUB_REPOSITORY/releases/tags/v$VERSION" --jq '{release: .}' > "$RUNNER_TEMP/publish-current.json"
+        gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -e 'add' > "$RUNNER_TEMP/publish-history.json"
+        python3 scripts/release_metadata.py --event "$RUNNER_TEMP/publish-current.json" \
+          --releases "$RUNNER_TEMP/publish-history.json" --bundle-dir "$RUNNER_TEMP/publish-install-check"
   attach:
     needs: [prepare, publish]
     runs-on: ubuntu-latest

@@ -1,7 +1,9 @@
 import os
+import json
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 from unittest import TestCase
 
@@ -17,6 +19,69 @@ def workflow(name):
 
 
 class ReleaseWorkflowTests(TestCase):
+    def test_retried_publisher_rechecks_latest_release_before_login(self):
+        publisher = workflow("publish-image.yaml")
+        steps = publisher["jobs"]["publish"]["steps"]
+        check = next(step for step in steps if step.get("id") == "pre-publish")
+        login = next(i for i, step in enumerate(steps) if "login-action" in step.get("uses", ""))
+        self.assertLess(steps.index(check), login)
+        self.assertNotIn("if", check)
+        self.assertIn("pre-publish-command", publisher["on"]["workflow_call"]["inputs"])
+        command = workflow("release.yaml")["jobs"]["publish"]["with"]["pre-publish-command"]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            gh = root / "gh"
+            gh.write_text(f'#!{sys.executable}\n' + """
+import json,sys
+current = dict(id=1, tag_name='v1.0.0', draft=False, prerelease=False, published_at='2026-10-16T00:00:00Z')
+if '--paginate' in sys.argv:
+    newer = dict(current, id=2, tag_name='v1.1.0')
+    print(json.dumps([[current, newer]]))
+else:
+    print(json.dumps({'release': current}))
+""")
+            gh.chmod(0o700)
+            env = dict(os.environ, PATH=f"{root}:{os.environ['PATH']}", RUNNER_TEMP=str(root),
+                       GITHUB_REPOSITORY="test/project", VERSION="1.0.0")
+            result = subprocess.run(["bash", "-euo", "pipefail", "-c", command], cwd=ROOT, env=env, text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("greater than every other", result.stderr)
+            self.assertFalse((root / "publish-install-check").exists())
+
+    def test_release_history_fetch_handles_pages_without_incompatible_cli_flags(self):
+        steps = workflow("release.yaml")["jobs"]["prepare"]["steps"]
+        block = next(step["run"] for step in steps if step.get("id") == "metadata")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            gh = root / "gh"
+            gh.write_text(f'#!{sys.executable}\n' + """
+import json, os, sys
+if '--slurp' in sys.argv and '--jq' in sys.argv:
+    print('the --slurp option is not supported with --jq', file=sys.stderr)
+    sys.exit(2)
+current = dict(id=1, tag_name='v1.10.0', draft=False, prerelease=False, published_at='2026-10-16T00:00:00Z')
+if '--paginate' in sys.argv:
+    if os.environ.get('FETCH_FAIL'):
+        sys.exit(9)
+    previous = dict(current, id=2, tag_name='v1.9.9')
+    print(json.dumps([[previous], [current]]))
+else:
+    print(json.dumps({'release': current}))
+""")
+            gh.chmod(0o700)
+            env = dict(os.environ, PATH=f"{root}:{os.environ['PATH']}", RUNNER_TEMP=str(root),
+                       GITHUB_REPOSITORY="test/project", RELEASE_ID="1", GITHUB_OUTPUT=str(root / "output"))
+            result = subprocess.run(["bash", "-c", block], env=env, cwd=ROOT, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual((root / "output").read_text().strip(), "version=1.10.0")
+            history = json.loads((root / "releases.json").read_text())
+            self.assertEqual([value["tag_name"] for value in history], ["v1.9.9", "v1.10.0"])
+            (root / "output").unlink()
+            env["FETCH_FAIL"] = "1"
+            result = subprocess.run(["bash", "-c", block], env=env, cwd=ROOT, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse((root / "output").exists())
+
     def test_pr_workflow_cannot_publish(self):
         ci = workflow("ci.yaml")
         self.assertEqual(set(ci["on"]), {"push", "pull_request"})

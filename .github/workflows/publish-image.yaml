@@ -20,6 +20,10 @@ on:
       smoke-command:
         type: string
         required: true
+      pre-publish-command:
+        description: Trusted caller command to refresh release eligibility on every job retry
+        type: string
+        default: 'true'
     outputs:
       digest:
         description: Combined manifest digest of the tested images
@@ -79,6 +83,14 @@ jobs:
               --label "org.opencontainers.image.version=$VERSION" "$CONTEXT"
             bash -euo pipefail -c "$SMOKE_COMMAND"
           done
+      - name: Refresh caller release eligibility before publishing
+        id: pre-publish
+        env:
+          PRE_PUBLISH_COMMAND: ${{ inputs.pre-publish-command }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          bash -euo pipefail -c "$PRE_PUBLISH_COMMAND"
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io

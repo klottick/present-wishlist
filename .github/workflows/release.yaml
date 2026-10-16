@@ -1,0 +1,92 @@
+name: Release
+on:
+  release:
+    types: [published]
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: ${{ !github.event.release.draft && !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check event commit has not moved
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Fetch current release and complete history; validate version
+        id: metadata
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ github.event.release.id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" --jq '{release: .}' > "$RUNNER_TEMP/current-release.json"
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq 'add' > "$RUNNER_TEMP/releases.json"
+          python3 scripts/release_metadata.py --event "$RUNNER_TEMP/current-release.json" \
+            --releases "$RUNNER_TEMP/releases.json" --bundle-dir "$RUNNER_TEMP/install-preview" >> "$GITHUB_OUTPUT"
+      - name: Verify release application
+        run: |
+          set -euo pipefail
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip==26.2.1
+          .venv/bin/python -m pip install -r backend/requirements.txt
+          npm --prefix frontend ci
+          npm --prefix frontend exec -- playwright install --with-deps chromium
+          bash scripts/verify.sh
+  publish:
+    needs: [prepare]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish-image.yaml
+    with:
+      image: ghcr.io/klottick/present-wishlist
+      version: ${{ needs.prepare.outputs.version }}
+      smoke-command: python3 scripts/smoke_container.py --image "$IMAGE" --platform "$PLATFORM"
+  attach:
+    needs: [prepare, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Generate and attach install files and digest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          DIGEST: ${{ needs.publish.outputs.digest }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from scripts.release_metadata import write_bundle
+          output = Path(os.environ['RUNNER_TEMP']) / 'install'
+          write_bundle(Path('.'), output, os.environ['VERSION'])
+          (output / 'image-digest.txt').write_text(f"ghcr.io/klottick/present-wishlist:{os.environ['VERSION']}@{os.environ['DIGEST']}\n")
+          PY
+          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            "$RUNNER_TEMP/install/compose.yaml" "$RUNNER_TEMP/install/family.example.yaml" \
+            "$RUNNER_TEMP/install/.env.example" "$RUNNER_TEMP/install/image-digest.txt"

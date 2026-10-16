@@ -10,6 +10,12 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-16-docker-release-design.md` (user approved).
 
+**Execution status:** Native execution selected. Tasks 1–5 and Task 6's local
+implementation/review/verification are complete on `feat/docker-release`.
+Independent review blockers were fixed with regressions. Task 6's push/publication,
+ARM CI and anonymous-install acceptance remain pending explicit authorization;
+see `docs/verification/docker-release.md` for evidence and limits.
+
 ## Global Constraints
 
 - Publish Linux images for both `amd64` and `arm64`; no 32-bit ARM support.

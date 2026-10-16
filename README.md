@@ -82,15 +82,20 @@ docker compose start app
 ```
 
 Restore first into an **isolated installation with a fresh named volume**, not
-over your running family's data. Copy the backed-up YAML and `.env` to the new
-installation, and put its database in `./backup/wishlist.sqlite3`. Pull the same
-image version, then run this non-root helper (the application must remain stopped):
+over your running family's data. Put the backup directory in the new installation
+alongside its Compose file. Restore YAML as readable by the container, but keep
+`.env` private. The host shell streams the private database through stdin, so no
+backup permissions are relaxed. Pull the same image version, then run this
+non-root helper (the application must remain stopped):
 
 ```sh
+cp ./backup/family.yaml ./backup/.env .
+chmod 644 family.yaml
+chmod 600 .env
 docker compose pull
-docker compose run --rm --no-deps --entrypoint python \
-  --volume "$PWD/backup:/backup:ro" app -c \
-  "import os,shutil; os.umask(0o077); src=open('/backup/wishlist.sqlite3','rb'); dst=open('/data/wishlist.sqlite3','xb'); shutil.copyfileobj(src,dst); dst.close(); src.close()"
+docker compose run --rm -T --no-deps --entrypoint python app -c \
+  "import os,shutil,sys; os.umask(0o077); dst=open('/data/wishlist.sqlite3','xb'); shutil.copyfileobj(sys.stdin.buffer,dst); dst.close()" \
+  < ./backup/wishlist.sqlite3
 docker compose up -d --wait
 ```
 
@@ -187,7 +192,7 @@ publish:
   permissions:
     contents: read
     packages: write
-  uses: klottick/present-wishlist/.github/workflows/publish-image.yaml@ebba8d68104fb8f3a52121e96a335a85319fb5ec
+  uses: klottick/present-wishlist/.github/workflows/publish-image.yaml@41af090209bf25666410809a976e3d8bcb2baa41
   with:
     image: ghcr.io/your-name/your-project
     version: ${{ needs.prepare.outputs.version }}
@@ -195,6 +200,7 @@ publish:
     dockerfile: Dockerfile
     platforms: linux/amd64,linux/arm64
     smoke-command: ./ci/smoke-image.sh "$IMAGE" "$PLATFORM"
+    pre-publish-command: ./ci/check-release-order.sh "$VERSION"
 ```
 
 That immutable reference is a **local, not-yet-pushed commit** until publication
@@ -204,6 +210,9 @@ command is trusted repository code, never user-supplied release text. It receive
 the built image/platform and must exit nonzero on failure. Both tested images are
 retained and pushed without rebuilding; final version, `sha-<full-commit>`, and
 `latest` aliases use those digests. No shared infrastructure repository is needed.
+The optional pre-publish hook refreshes the caller's release-order check inside
+the publishing job; supply it so rerunning an old failed job cannot move `latest`
+backward after a newer release. The caller must hold its release concurrency lock.
 
 Only published canonical stable releases trigger this project's caller. Publication
 is serialized, older/equal versions are rejected, and an existing exact image tag

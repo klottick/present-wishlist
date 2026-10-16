@@ -1,7 +1,8 @@
 # Prebuilt Docker release
 
 Date: 2026-10-16. Status: approved; native local implementation verified and reviewed.
-First publication, ARM execution, and anonymous release acceptance remain pending.
+Native amd64 and emulated arm64 PR CI passed. First publication and anonymous
+release acceptance remain pending separate approval.
 
 ## Goal and agreed constraints
 

@@ -7,7 +7,7 @@ The repository review and follow-up fixes are recorded in the
 
 ## Docker install (no source build)
 
-**Publication is pending:** the Docker implementation is locally verified, but no
+**Publication is pending:** the Docker implementation passes local and PR checks, but no
 prebuilt release has been published yet. The following is the install path once
 the first release passes its publication checks; `0.1.0` is currently illustrative.
 See [Docker verification and remaining gates](docs/verification/docker-release.md).
@@ -203,8 +203,8 @@ publish:
     pre-publish-command: ./ci/check-release-order.sh "$VERSION"
 ```
 
-That immutable reference is a **local, not-yet-pushed commit** until publication
-is authorized. Use an audited, published commit before adopting it elsewhere.
+That immutable reference pins the audited publisher implementation in this
+repository. Review and deliberately update the pin when adopting later changes.
 The publisher checks out the caller's event commit, not this repository. The smoke
 command is trusted repository code, never user-supplied release text. It receives
 the built image/platform and must exit nonzero on failure. Both tested images are

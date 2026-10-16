@@ -2,9 +2,10 @@
 
 ## Status
 
-Local implementation on `feat/docker-release`; **no release published**. Push,
-release/tag creation, and any GHCR visibility change require explicit approval.
-Local results are not proof of Actions execution or anonymous registry access.
+Implementation submitted through [PR #1](https://github.com/klottick/present-wishlist/pull/1);
+**no release published**. The user authorized pushing, reviewing and merging the
+PR. Release/tag creation and any GHCR visibility change still require separate
+approval. Passing verification CI is not proof of publishing or anonymous access.
 
 ## Evidence
 
@@ -40,11 +41,10 @@ Local results are not proof of Actions execution or anonymous registry access.
 
 ## Remaining acceptance gates
 
-- This host advertises only amd64 execution; **ARM has not run locally**. No
-  privileged host emulation was installed. CI explicitly builds/smokes arm64 with
-  QEMU on its disposable runner; success there is required before publication.
-- After separate authorization, push and observe actual CI and first stable
-  release workflow. Registry permission/absence-check behavior is not yet proven.
+- Local ARM execution is unavailable; arm64 build/smoke **passed under QEMU in
+  GitHub CI**, as recorded below. No privileged local host emulation was installed.
+- After separate authorization, observe the first stable release workflow.
+  Registry permission/absence-check behavior is not yet proven by verification CI.
 - Confirm GHCR public visibility. With a private, empty `DOCKER_CONFIG`, inspect
   both platform manifests and pull the published images anonymously; match exact
   version, full-SHA and latest digests with the Actions output.
@@ -103,16 +103,61 @@ still run; combining both log streams would strengthen that diagnostic assertion
   app without removing its volume; both UI-created gifts remained.
 - `git diff --check`: clean.
 
-ARM and remote release checks above remain pending, not passing or waived.
+ARM CI subsequently passed as recorded below; remote release checks remain pending.
+
+## PR review and real CI
+
+- A second independent read-only review examined the actual PR range
+  `d571807..f968947`. No Critical, Important, or new Minor findings. The reviewer
+  independently passed 37 focused tests, native-amd64 image smoke, actionlint and
+  range whitespace checks. The previously accepted smoke diagnostic Minor remains
+  deferred; the review was recorded as a PR comment, not a self-approval.
+- [GitHub Verify run 38948695732](https://github.com/klottick/present-wishlist/actions/runs/38948695732)
+  passed against PR head `f96894713c43db0180999cea0b4c6378e80ec0bf`:
+  - `application`: 129 backend tests, 81 frontend tests, both browser workflows,
+    Django/dependency checks, lint and build passed.
+  - `containers (linux/amd64)`: real build and smoke passed natively on x86_64.
+  - `containers (linux/arm64)`: real build and smoke passed using QEMU aarch64
+    on an x86_64 runner (emulated, not native ARM).
+- Raw job logs confirm both `PASS linux/amd64` and `PASS linux/arm64`, including
+  frontend/assets, CSRF, privacy, volume/session persistence, fail-closed startup
+  and termination. These read-only CI jobs did not publish registry artifacts.
+- The PR merge-preview tree matched the fully verified local source tree. The
+  final documentation update is checked again before merging; no release is
+  created as part of integration.
+
+### Pre-merge test lifecycle corrections
+
+A fresh local pre-merge verification caught the existing intermittent
+`discards an unfinished owner draft when the selected identity changes` failure:
+pending React work reached `getItems` after its mock had been reset to return
+`undefined`. The suite's nested teardown reset mocks before the outer shared
+cleanup unmounted the tree. A deterministic teardown invariant first failed with
+the app still mounted; explicitly calling `cleanup()` before the assertion/reset
+made it pass. No application behavior was changed.
+
+Stability verification then exposed
+`ignores a late list response after the identity generation changes`: its visible
+filter did not prove the first list request had started, because catalog loading
+is asynchronous. Focus could invalidate the initial catalog before the stale
+request existed. The test now waits for the initial API request before triggering
+focus, preserving its intended late-response assertion rather than weakening it.
+
+Both failures were investigated rather than hidden by retries. After correction,
+all 28 wishlist tests passed six consecutive stability runs (failure-stop, no
+retries). Fresh full local verification then passed: 129 backend tests, 81 frontend
+tests, both browser workflows, checks, lint and build. Latest-head PR checks are
+required again before merge. The changes affect test setup/synchronization only.
 
 ## Explicit execution decisions
 
 - Add an optional caller-owned pre-publication eligibility hook rather than
   coupling the generic publisher to wishlist release code. Other callers must
   supply their own ordering guard; omitting it leaves their retry ordering unsafe.
-- Keep ARM, Actions, first-package behavior and anonymous pull checks as gated
-  remote acceptance, not simulated success. Risk: infrastructure integration
-  defects may still appear after authorization; the release is not yet accepted.
+- Keep remote acceptance as real checks, not simulated success. ARM and
+  verification Actions gates are now satisfied; first-package publishing and
+  anonymous pulls remain gated. Risk: publication integration defects may still
+  appear after authorization; the release is not yet accepted.
 - Accept non-atomic registry alias updates as designed, with explicit partial-run
   diagnosis/repair. Risk: a registry failure can temporarily leave aliases on
   different digests; stable tags must not be blindly overwritten.

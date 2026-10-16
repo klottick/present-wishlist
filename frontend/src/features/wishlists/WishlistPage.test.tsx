@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { StrictMode } from 'react'
 import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
@@ -93,7 +93,12 @@ describe('WishlistPage', () => {
     api.updateItem.mockResolvedValue(ownerItem({ name: 'Edited gift', event: null }))
     api.deleteItem.mockResolvedValue(undefined)
   })
-  afterEach(() => vi.resetAllMocks())
+  afterEach(() => {
+    // Pending passive effects must be unmounted before their API mocks reset.
+    cleanup()
+    expect(document.body).toBeEmptyDOMElement()
+    vi.resetAllMocks()
+  })
 
   it('includes Anything results in a specific event selection and says so', async () => {
     api.getItems.mockResolvedValue([
@@ -135,6 +140,9 @@ describe('WishlistPage', () => {
     render(<IdentityProvider><ReadyWishlist owner={owner} /></IdentityProvider>)
 
     await screen.findByRole('combobox', { name: 'Filter by occasion' })
+    // The filter exists before the asynchronous catalog enables list loading.
+    // Start the stale request before focus can invalidate that generation.
+    await waitFor(() => expect(api.getItems).toHaveBeenCalledTimes(1))
     await act(async () => { fireEvent.focus(window) })
     expect(await screen.findByText('Current generation gift')).toBeVisible()
     await act(async () => { stale.resolve([ownerItem({ name: 'Stale generation gift', event: birthday })]) })

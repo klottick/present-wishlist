@@ -1,6 +1,7 @@
 # Prebuilt Docker release
 
-Date: 2026-10-16. Status: approved by the user; implementation plan awaiting review.
+Date: 2026-10-16. Status: approved; native local implementation in verification.
+First publication, ARM execution, and anonymous release acceptance remain pending.
 
 ## Goal and agreed constraints
 

@@ -5,7 +5,132 @@ A small, local family wishlist. Names and occasions are configured in YAML; gift
 The repository review and follow-up fixes are recorded in the
 [review report](docs/verification/repo-review-2026-10-16.md).
 
-## Local setup
+## Docker install (no source build)
+
+**Publication is pending:** the Docker implementation passes local and PR checks, but no
+prebuilt release has been published yet. The following is the install path once
+the first release passes its publication checks; `0.1.0` is currently illustrative.
+See [Docker verification and remaining gates](docs/verification/docker-release.md).
+
+**Trusted family use only.** Choosing a name is not authentication. Anyone with
+access can switch names and reveal surprises. Do not expose this app to the
+internet or untrusted users. Container packaging does not add accounts or TLS.
+
+Install Docker Engine with Compose, or Docker Desktop in **Linux-container mode**.
+Images target Linux `amd64` and `arm64`; ARM needs a **64-bit OS**, not 32-bit
+Raspberry Pi OS. Windows/macOS use Docker's Linux VM. Python/Node are not required.
+
+1. Choose an exact stable version on the repository's
+   [Releases page](https://github.com/klottick/present-wishlist/releases).
+   Download its **attached** `compose.yaml`, `family.example.yaml`, and
+   `.env.example` (not the source archives) into an empty directory.
+2. Copy `family.example.yaml` to `family.yaml` and `.env.example` to `.env`.
+   Edit the names/events using the YAML format below; keep keys stable when
+   renaming. Ensure the YAML is readable by container UID 10001 (for example,
+   mode `0644` inside a private installation directory on Linux).
+3. Generate a private random secret, e.g. `openssl rand -hex 32`, and set
+   `DJANGO_SECRET_KEY` in `.env`. Do not share or commit this file; use mode
+   `0600` on Unix. Keep the same secret across updates to preserve sessions.
+   The downloaded example pins `WISHLIST_VERSION` to that release.
+4. From that directory:
+
+   ```sh
+   docker compose config --quiet
+   docker compose pull
+   docker compose up -d --wait
+   ```
+
+Open **http://localhost:8000**. No local build, Vite, Node, or Python server is
+needed. `docker compose ps` shows health; `docker compose logs --tail=100 app`
+shows startup errors. `/healthz/` returns readiness without family data.
+Avoid sharing `docker compose config` output without `--quiet`: it includes secrets.
+
+### Configuration and trusted LAN access
+
+The app mounts `./family.yaml` read-only at `/config/family.yaml` and stores SQLite
+in the `wishlist-data` named volume at `/data/wishlist.sqlite3`. Use one application
+instance per volume. Edit YAML, then run `docker compose restart app` to sync.
+If your editor replaces the file instead of writing it in place, use
+`docker compose up -d --force-recreate app` to refresh the bind mount.
+
+Loopback-only access is the default. For a trusted LAN, explicitly set in `.env`:
+
+```dotenv
+WISHLIST_BIND_ADDRESS=0.0.0.0
+DJANGO_ALLOWED_HOSTS=wishlist.home,192.168.1.20
+```
+
+Use your server's actual DNS name/IP, then visit e.g. `http://192.168.1.20:8000`.
+Do not use wildcard allowed hosts. `DJANGO_CSRF_TRUSTED_ORIGINS` normally stays
+empty for this same-origin setup; optional entries must be exact HTTP/HTTPS
+origins, not paths or wildcards. Forwarded proxy headers are not trusted.
+Firewall access to trusted devices; public hosting/hardening is outside scope.
+
+### Backup, restore, and updates
+
+The following shell examples are for Linux/macOS (adapt paths in PowerShell).
+Protect the backup directory: it contains all family data and your secret.
+Stop before copying SQLite; do not copy a live database file.
+
+```sh
+mkdir -m 700 backup
+docker compose stop app
+docker compose cp app:/data/wishlist.sqlite3 ./backup/wishlist.sqlite3
+cp family.yaml .env backup/
+chmod 600 backup/* backup/.env
+docker compose start app
+```
+
+Restore first into an **isolated installation with a fresh named volume**, not
+over your running family's data. Put the backup directory in the new installation
+alongside its Compose file. Restore YAML as readable by the container, but keep
+`.env` private. The host shell streams the private database through stdin, so no
+backup permissions are relaxed. Pull the same image version, then run this
+non-root helper (the application must remain stopped):
+
+```sh
+cp ./backup/family.yaml ./backup/.env .
+chmod 644 family.yaml
+chmod 600 .env
+docker compose pull
+docker compose run --rm -T --no-deps --entrypoint python app -c \
+  "import os,shutil,sys; os.umask(0o077); dst=open('/data/wishlist.sqlite3','xb'); shutil.copyfileobj(sys.stdin.buffer,dst); dst.close()" \
+  < ./backup/wishlist.sqlite3
+docker compose up -d --wait
+```
+
+This refuses to overwrite an existing database and creates it as UID/GID
+`10001:10001` with private permissions in the fresh volume. Verify gifts and
+purchase privacy before relying on the restored installation. Never run two
+apps against the same SQLite volume, use `chmod 777`, or switch the service to root
+to hide permission problems. Keep the backup's secret to preserve sessions.
+
+Before updating, back up as above. Set `WISHLIST_VERSION` in `.env` to the desired
+exact stable version, then `docker compose pull` and `docker compose up -d --wait`.
+Migrations and YAML synchronization run before serving. There is **no automatic
+schema rollback**: restoring an old image may require restoring its matching
+pre-upgrade database backup. Normal `stop`, `start`, and `down` preserve the named
+volume; **`docker compose down -v` destroys stored gifts, purchases, and sessions**.
+
+### Troubleshooting
+
+- Missing YAML: create the actual `family.yaml` file first. Compose deliberately
+  refuses to create a directory in its place. Invalid YAML stops startup.
+- Invalid secret/hosts: use a random secret of at least 50 characters (64 hex
+  characters recommended); specify exact hosts/IPs without schemes or ports.
+- Permission denied: YAML must be readable and the data volume writable by UID
+  10001. A bind-mounted data directory needs correct ownership; the default named
+  volume initializes ownership automatically. Restore into a fresh volume rather
+  than changing an existing installation's ownership blindly.
+- Unhealthy/restarting: inspect `docker compose logs --tail=100 app` for validation,
+  migration, or sync failure. Startup fails closed; do not bypass checks.
+- Unsupported platform: use `amd64` or 64-bit `arm64` Linux containers; no 32-bit
+  ARM image is supplied.
+- Pull denied/not found: check the version exists and GHCR package visibility is
+  public. A public GitHub repository does **not** make its image public. End users
+  should not need a login/PAT; report a private-package release as a release defect.
+
+## Source development setup
 
 Requirements: Python 3.14 and Node.js 24 or newer.
 
@@ -52,7 +177,51 @@ Each buyer can mark an ordinary item once. A competing mark is rejected if anoth
 
 Removing a person or occasion from YAML archives the existing record instead of erasing it. Archived members and event assignments remain visible where already used, and their records and purchase marks are preserved. An archived event cannot be newly assigned to another item. Restore the same key to reactivate that record.
 
-Identity selection is a shared-tab convenience, not an account system. Tabs in one browser share the selected profile, so switching names affects those tabs; use separate browser profiles for separate concurrent identities. A future login/account integration is not implemented: name selection is not authentication, and this app is trust-based. Do not expose it to untrusted users or put real credentials or sensitive secrets in notes. No authentication, deployment, calendar dates, or live push updates are provided.
+Identity selection is a shared-tab convenience, not an account system. Tabs in one browser share the selected profile, so switching names affects those tabs; use separate browser profiles for separate concurrent identities. A future login/account integration is not implemented: name selection is not authentication, and this app is trust-based. Do not expose it to untrusted users or put real credentials or sensitive secrets in notes. No authentication, managed hosting, calendar dates, or live push updates are provided.
+
+## Reusing image publication across projects
+
+Keep each project's Dockerfile, application tests, version guard, and serialized
+release caller local. Only the generic build/smoke/push workflow is shared. For a
+different stack, a caller's publishing job can look like this (after its own
+`prepare` job validates the stable release and tests the application):
+
+```yaml
+publish:
+  needs: [prepare]
+  permissions:
+    contents: read
+    packages: write
+  uses: klottick/present-wishlist/.github/workflows/publish-image.yaml@41af090209bf25666410809a976e3d8bcb2baa41
+  with:
+    image: ghcr.io/your-name/your-project
+    version: ${{ needs.prepare.outputs.version }}
+    context: .
+    dockerfile: Dockerfile
+    platforms: linux/amd64,linux/arm64
+    smoke-command: ./ci/smoke-image.sh "$IMAGE" "$PLATFORM"
+    pre-publish-command: ./ci/check-release-order.sh "$VERSION"
+```
+
+That immutable reference pins the audited publisher implementation in this
+repository. Review and deliberately update the pin when adopting later changes.
+The publisher checks out the caller's event commit, not this repository. The smoke
+command is trusted repository code, never user-supplied release text. It receives
+the built image/platform and must exit nonzero on failure. Both tested images are
+retained and pushed without rebuilding; final version, `sha-<full-commit>`, and
+`latest` aliases use those digests. No shared infrastructure repository is needed.
+The optional pre-publish hook refreshes the caller's release-order check inside
+the publishing job; supply it so rerunning an old failed job cannot move `latest`
+backward after a newer release. The caller must hold its release concurrency lock.
+
+Only published canonical stable releases trigger this project's caller. Publication
+is serialized, older/equal versions are rejected, and an existing exact image tag
+is never silently overwritten. Registry tag updates are **not atomic**: after a
+partial failure, inspect all tags/digests and explicitly plan repair; do not blindly
+rerun the whole release. If only asset attachment failed after successful image
+publication, use GitHub Actions' **Re-run failed jobs** so only attachment retries.
+See the Actions run summary for the combined digest; releases attach
+`image-digest.txt` too. Staging tags are run-specific and are not installation tags.
 
 ## Verification
 

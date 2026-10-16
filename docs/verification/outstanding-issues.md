@@ -1,10 +1,12 @@
-# Outstanding final-review findings
+# Final-review findings — resolved
 
-Updated 2026-10-15. The application is runnable and the complete configured
-verification command passes, but the controller has not given unconditional
-acceptance. A passing smoke suite does not invalidate these narrower findings.
+Updated 2026-10-16. Both findings below were fixed during the follow-up full
+repository review. Independent Luna re-review accepted the fixes; regression
+tests and controller verification are recorded in the
+[current review report](repo-review-2026-10-16.md). The descriptions below retain
+the original failure conditions for reference, not as current open issues.
 
-## Important: pending delete loses keyboard focus after identity revalidation
+## Resolved: pending delete lost keyboard focus after identity revalidation
 
 Location: `frontend/src/features/items/DeleteItemDialog.tsx`, restoration effect.
 
@@ -16,17 +18,19 @@ Reproduction:
 3. Release the session check while deletion is still pending.
 4. Release deletion with a retryable error, then press Escape.
 
-The restoration effect tries to focus a disabled Cancel button. The button
+Previously, the restoration effect tried to focus a disabled Cancel button. The button
 exists, so the fallback focusable dialog container is not selected. Focus stays
 on the page body, and the dialog does not receive Escape/Tab events. The modal
 can still be operated with a pointer. The returned-identity-error variant with
 enabled controls was fixed; this pending-request variant remains open.
 
-Required follow-up: focus an enabled control or the dialog container, preserve
-the same-identity guard, and retain a deterministic real-browser regression
-that holds both requests through a rendered hidden interval.
+Fix: focus an enabled Cancel control or fall back to the focusable dialog
+container, preserving the same-identity guard. The deterministic browser
+regression holds both requests through a rendered hidden/inert interval,
+restores the same identity while deletion remains pending, then checks Tab,
+retryable failure feedback, Escape, and return focus. It runs at both viewports.
 
-## Minor: generated filter label can collide with another configured label
+## Resolved: generated filter labels could collide
 
 Location: `frontend/src/features/wishlists/EventFilter.tsx`.
 
@@ -38,16 +42,16 @@ events:
   special: All events (configured occasion)
 ```
 
-The built-in All events choice is now distinct, but the disambiguation suffix
-used for the first configured label collides with the second. Filter values and
-backend filtering remain correct. A follow-up should disambiguate the complete
-rendered set, using stable keys where needed, without reserving additional YAML
-labels.
+Previously, the disambiguation suffix for the first configured label collided
+with the second. The filter now disambiguates the complete rendered option set,
+including synthetic options and further generated-label collisions, using
+stable keys without reserving additional YAML labels. Tests assert uniqueness
+across every option and preserve distinct filter-key selection.
 
 ## Verification status
 
-Controller's fresh `bash scripts/verify.sh` passed after the final fix wave:
-91 backend tests, 79 frontend tests, lint/build, and 2 real-browser workflows
-(1280×800 and 390×844). The remaining pending-delete variant was independently
-reproduced by Sol in a targeted isolated browser probe; it is not yet part of
-the configured passing suite. Final acceptance remains withheld for that issue.
+Current controller verification: 92 backend tests, 81 frontend tests,
+lint/build/checks, and both real-browser workflows passed. Six additional
+browser stability runs passed. The previously missing pending-delete variant
+is now part of the configured browser suite. No Critical or Important review
+findings remain open within the approved local-development scope.

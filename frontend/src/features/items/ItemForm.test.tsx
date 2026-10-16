@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { StrictMode } from 'react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -62,6 +62,79 @@ describe('ItemForm', () => {
     expect(screen.getByRole('textbox', { name: /notes/i })).toHaveValue('For the train')
     expect(screen.getByRole('combobox', { name: /event/i })).toHaveValue('1')
     expect(screen.getByRole('checkbox', { name: /allow multiple purchases/i })).toBeChecked()
+  })
+
+  it('associates every field error exactly once and combines event errors without duplicate IDs', async () => {
+    api.createItem.mockRejectedValue(new ApiError(400, {
+      code: 'validation_error', message: 'Please correct the highlighted fields.', fields: {
+        name: ['Name issue one.', 'Name issue two.'],
+        link: ['Link issue one.', 'Link issue two.'],
+        price: ['Price issue one.', 'Price issue two.'],
+        notes: ['Notes issue one.', 'Notes issue two.'],
+        event_id: ['Event issue one.', 'Event issue two.'],
+        allow_multiple_purchases: ['Purchase issue one.', 'Purchase issue two.'],
+      },
+    }))
+    const view = renderForm({ events: [birthday], onSaved: vi.fn(), onCancel: vi.fn() })
+    const form = screen.getByRole('form', { name: 'Add a gift' })
+    const user = userEvent.setup()
+    await user.type(within(form).getByRole('textbox', { name: /gift name/i }), 'Book')
+    await user.selectOptions(within(form).getByRole('combobox', { name: 'Event' }), '1')
+    await user.click(within(form).getByRole('button', { name: 'Save gift' }))
+    await screen.findByText(/Purchase issue two\./)
+
+    const controls = [
+      [within(form).getByRole('textbox', { name: /gift name/i }), ['Name issue one.', 'Name issue two.']],
+      [within(form).getByRole('textbox', { name: 'Link' }), ['Link issue one.', 'Link issue two.']],
+      [within(form).getByRole('textbox', { name: 'Price' }), ['Price issue one.', 'Price issue two.']],
+      [within(form).getByRole('textbox', { name: 'Notes' }), ['Notes issue one.', 'Notes issue two.']],
+      [within(form).getByRole('combobox', { name: 'Event' }), ['Event issue one.', 'Event issue two.']],
+      [within(form).getByRole('checkbox', { name: 'Allow multiple purchases' }), ['Purchase issue one.', 'Purchase issue two.']],
+    ] as const
+    const describedIds: string[] = []
+    for (const [control, messages] of controls) {
+      expect(control).toHaveAttribute('aria-invalid', 'true')
+      const ids = (control.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean)
+      expect(ids.length).toBeGreaterThan(0)
+      describedIds.push(...ids)
+      const description = ids.map((id) => document.getElementById(id)?.textContent ?? '').join(' ')
+      expect(control).toHaveAccessibleDescription(messages.join(' '))
+      for (const message of messages) expect(description).toContain(message)
+      expect(description.match(/issue (?:one|two)\./g)).toHaveLength(2)
+      for (const id of ids) expect(document.querySelectorAll(`[id="${id}"]`)).toHaveLength(1)
+    }
+    expect(new Set(describedIds).size).toBe(describedIds.length)
+
+    view.rerender(<StrictMode><IdentityProvider><ItemForm events={[]} onSaved={vi.fn()} onCancel={vi.fn()} /></IdentityProvider></StrictMode>)
+    const eventControl = screen.getByRole('combobox', { name: 'Event' })
+    expect(eventControl).toHaveAttribute('aria-invalid', 'true')
+    const eventDescription = (eventControl.getAttribute('aria-describedby') ?? '').split(/\s+/)
+      .map((id) => document.getElementById(id)?.textContent ?? '').join(' ')
+    expect(eventControl).toHaveAccessibleDescription(/This occasion is no longer configured\..*Event issue one\. Event issue two\./)
+    expect(eventDescription).toContain('Event issue one.')
+    expect(eventDescription).toContain('Event issue two.')
+    expect(eventDescription).toContain('This occasion is no longer configured.')
+    expect(eventDescription.match(/Event issue (?:one|two)\./g)).toHaveLength(2)
+
+    const nameControl = screen.getByRole('textbox', { name: /gift name/i })
+    await user.type(nameControl, ' revised')
+    expect(nameControl).not.toHaveAttribute('aria-invalid')
+    expect(nameControl).not.toHaveAttribute('aria-describedby')
+    expect(screen.queryByText(/Name issue one\./)).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Link' })).toHaveAccessibleDescription('Link issue one. Link issue two.')
+    expect(eventControl).toHaveAttribute('aria-invalid', 'true')
+
+    await user.selectOptions(eventControl, '')
+    expect(eventControl).not.toHaveAttribute('aria-invalid')
+    expect(eventControl).not.toHaveAttribute('aria-describedby')
+    expect(screen.queryByText(/This occasion is no longer configured\./)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Event issue one\./)).not.toBeInTheDocument()
+
+    const purchaseControl = screen.getByRole('checkbox', { name: 'Allow multiple purchases' })
+    await user.click(purchaseControl)
+    expect(purchaseControl).not.toHaveAttribute('aria-invalid')
+    expect(purchaseControl).not.toHaveAttribute('aria-describedby')
+    expect(screen.queryByText(/Purchase issue one\./)).not.toBeInTheDocument()
   })
 
   it('retains an archived current event and sends only editable fields on PATCH', async () => {

@@ -1,10 +1,15 @@
 # Family wishlist verification evidence
 
-**Controller status:** a fresh complete verification run passed after the final
-fix wave (91 backend tests, 79 frontend tests, lint/build, 2 browser workflows).
-Final review still has a pending-delete keyboard-focus defect and a minor
-generated-label collision. See [outstanding findings](outstanding-issues.md);
-these are not covered by the passing workflow and are not waived.
+**Current controller status (2026-10-16):** the follow-up repository review
+resolved the outstanding UI findings and added their regression coverage.
+Verification passed: 92 backend tests, 81 frontend tests, lint/build/checks,
+both browser viewports, and six additional browser stability runs. See the
+[current review report](repo-review-2026-10-16.md) and
+[resolved findings](outstanding-issues.md).
+
+The remaining sections are historical evidence from the 2026-10-15
+implementation and its original final fix wave; their counts describe that
+revision rather than the latest repository review.
 
 Final coordinated fix-wave verification evidence, updated 2026-10-15. The initial fixed-port harness correctly refused occupied port 5174 rather than borrowing an unrelated Vite server. Following the controller's ruling, the fixture allocates fresh unused loopback ports for each viewport and passes only that exact frontend origin to Django. This update adds deterministic I1–I4 and M1–M2 regressions plus the CSRF write matrix; the earlier Task 12 counts are superseded by the fresh final counts below.
 
@@ -68,4 +73,4 @@ The full browser command was also run independently before `bash scripts/verify.
 - Expected browser HTTP failures are checked by exact response status and endpoint: one 409 for the ordinary purchase conflict, one 503 and one 403 for the deletion error/revalidation path. Matching Chromium “Failed to load resource” console entries are accounted for only against those exact response allowances. Uncaught page errors and all other console errors still fail the test.
 - Live result at both viewports: owner create/edit/delete; Birthday filtering includes Anything and excludes Christmas; owner API purchase-field omission and no buyer/current-mark disclosure after Sam/Robin have marked and the owner view/API are refreshed; actual competing-buyer conflict; repeatable multi-buyer marks/own undo; reload persistence; member label rename under stable `sam` key, with profile ID/session and gift/event/purchase references preserved through restart; keyboard dialog pending/error handling; same-profile blur/focus revalidation hides stale authenticated content and preserves the in-progress item draft; zero horizontal overflow; zero uncaught page errors; and zero unexpected console errors.
 - Self-review: launcher fallbacks derive from the script/repository path rather than caller cwd, with environment overrides and CLI precedence; subprocesses use argument arrays and `sys.executable`; invalid config does not launch any command; test/e2e YAML and SQLite are isolated; per-run server processes are owned and cleaned; ports are dynamically allocated and checked on loopback; dynamic CSRF trust is exact-origin-only; README covers labels/keys, archives, Anything, purchases, shared tabs, future-account boundary, and trust limitations.
-- Whole-change/controller review remains pending; this document records verification, not branch approval.
+- At the original handoff, whole-change/controller acceptance was still pending. That status is superseded by the follow-up repository review linked above; this historical record does not claim production/deployment readiness.

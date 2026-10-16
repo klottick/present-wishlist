@@ -11,6 +11,7 @@
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "test:e2e": "playwright test -c playwright.config.ts",
+    "install:browsers": "playwright install chromium",
     "lint": "eslint ."
   },
   "dependencies": {

@@ -15,6 +15,7 @@ import time
 
 
 ROOT = Path(__file__).resolve().parents[2]
+TEMP_ROOT = Path("/tmp/opencode")
 STOP_REQUESTED = threading.Event()
 RESTART_REQUESTED = threading.Event()
 
@@ -102,7 +103,8 @@ def main() -> int:
     frontend_port = available_loopback_port({backend_port})
     backend_origin = f"http://127.0.0.1:{backend_port}"
     frontend_origin = f"http://127.0.0.1:{frontend_port}"
-    temporary = Path(tempfile.mkdtemp(prefix="family-wishlist-e2e-", dir="/tmp/opencode"))
+    TEMP_ROOT.mkdir(parents=True, exist_ok=True)
+    temporary = Path(tempfile.mkdtemp(prefix="family-wishlist-e2e-", dir=TEMP_ROOT))
     config = temporary / "family.yaml"
     database = temporary / "family.sqlite3"
     shutil.copyfile(Path(__file__).with_name("fixtures.yaml"), config)

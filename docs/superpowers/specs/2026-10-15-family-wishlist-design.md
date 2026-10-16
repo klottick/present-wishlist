@@ -2,7 +2,8 @@
 
 Date: 2026-10-15
 Revision: YAML-managed members and events added following conversational approval.
-Status: Approved by the user; implementation plan pending review and execution-method selection.
+Status: Approved by the user and implemented. Current review and verification
+status is recorded in `docs/verification/repo-review-2026-10-16.md`.
 
 ## 1. Intent and success criteria
 

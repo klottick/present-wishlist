@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { ApiError, createItem, updateItem } from '../../api/client'
 import type { EventOption, ItemInput, OwnerItem } from '../../api/types'
 import { useIdentity } from '../identity/IdentityProvider'
@@ -7,6 +7,7 @@ type Props = { item?: OwnerItem; events: EventOption[]; eventsReady?: boolean; o
 type Draft = Omit<ItemInput, 'event_id'> & { event_id: number | null }
 
 export function ItemForm({ item, events, eventsReady = true, onSaved, onCancel }: Props) {
+  const errorId = useId()
   const { generation, phase, revalidate } = useIdentity()
   const [draft, setDraft] = useState<Draft>(() => ({
     name: item?.name ?? '', link: item?.link ?? '', price: item?.price ?? '', notes: item?.notes ?? '',
@@ -69,25 +70,31 @@ export function ItemForm({ item, events, eventsReady = true, onSaved, onCancel }
   const removedDraftEvent = eventsReady && draft.event_id !== null && !activeDraftEvent && !currentEvent
     ? selectedEvent : null
   const invalidEventAssignment = eventsReady && draft.event_id !== null && !activeDraftEvent && !currentEvent
+  const describedBy = (...ids: Array<string | false>) => ids.filter(Boolean).join(' ') || undefined
+  const fieldErrorGroup = (field: string, messages: string[]) => messages.length > 0 && (
+    <p className="field-error" id={`${errorId}-${field}-error`}>
+      {messages.join(' ')}
+    </p>
+  )
   return (
     <form className="item-form" onSubmit={(event) => void submit(event)} aria-labelledby="item-form-title">
       <h2 id="item-form-title">{item ? 'Edit gift' : 'Add a gift'}</h2>
       {error && <p role="alert">{error}</p>}
       <label>Gift name <span aria-hidden="true">*</span>
-        <input autoFocus required maxLength={200} value={draft.name} onChange={(event) => change('name', event.target.value)} aria-invalid={fieldErrors.name?.length ? true : undefined} aria-describedby={fieldErrors.name?.length ? 'gift-name-error' : undefined} />
+        <input autoFocus required maxLength={200} value={draft.name} onChange={(event) => change('name', event.target.value)} aria-invalid={fieldErrors.name?.length ? true : undefined} aria-describedby={fieldErrors.name?.length ? `${errorId}-name-error` : undefined} />
       </label>
-      {fieldErrors.name?.map((message) => <p className="field-error" id="gift-name-error" key={message}>{message}</p>)}
-      <label>Link <input type="url" maxLength={2000} value={draft.link} onChange={(event) => change('link', event.target.value)} aria-invalid={fieldErrors.link?.length ? true : undefined} /></label>
-      {fieldErrors.link?.map((message) => <p className="field-error" key={message}>{message}</p>)}
-      <label>Price <input maxLength={80} value={draft.price} onChange={(event) => change('price', event.target.value)} aria-invalid={fieldErrors.price?.length ? true : undefined} /></label>
-      {fieldErrors.price?.map((message) => <p className="field-error" key={message}>{message}</p>)}
-      <label>Notes <textarea maxLength={5000} value={draft.notes} onChange={(event) => change('notes', event.target.value)} aria-invalid={fieldErrors.notes?.length ? true : undefined} /></label>
-      {fieldErrors.notes?.map((message) => <p className="field-error" key={message}>{message}</p>)}
+      {fieldErrorGroup('name', fieldErrors.name ?? [])}
+      <label>Link <input type="url" maxLength={2000} value={draft.link} onChange={(event) => change('link', event.target.value)} aria-invalid={fieldErrors.link?.length ? true : undefined} aria-describedby={fieldErrors.link?.length ? `${errorId}-link-error` : undefined} /></label>
+      {fieldErrorGroup('link', fieldErrors.link ?? [])}
+      <label>Price <input maxLength={80} value={draft.price} onChange={(event) => change('price', event.target.value)} aria-invalid={fieldErrors.price?.length ? true : undefined} aria-describedby={fieldErrors.price?.length ? `${errorId}-price-error` : undefined} /></label>
+      {fieldErrorGroup('price', fieldErrors.price ?? [])}
+      <label>Notes <textarea maxLength={5000} value={draft.notes} onChange={(event) => change('notes', event.target.value)} aria-invalid={fieldErrors.notes?.length ? true : undefined} aria-describedby={fieldErrors.notes?.length ? `${errorId}-notes-error` : undefined} /></label>
+      {fieldErrorGroup('notes', fieldErrors.notes ?? [])}
       <label>Event
         <select
           value={draft.event_id === null ? '' : String(draft.event_id)}
           aria-invalid={invalidEventAssignment || fieldErrors.event_id?.length ? true : undefined}
-          aria-describedby={invalidEventAssignment ? 'removed-event-error' : undefined}
+          aria-describedby={describedBy(invalidEventAssignment && `${errorId}-removed-event-error`, Boolean(fieldErrors.event_id?.length) && `${errorId}-event_id-error`)}
           onChange={(event) => {
             const eventId = event.currentTarget.value ? Number(event.currentTarget.value) : null
             setSelectedEvent(events.find((option) => option.id === eventId) ?? null)
@@ -102,12 +109,12 @@ export function ItemForm({ item, events, eventsReady = true, onSaved, onCancel }
           {events.filter((option) => option.is_active).map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
         </select>
       </label>
-      {invalidEventAssignment && <p className="field-error" id="removed-event-error">
+      {invalidEventAssignment && <p className="field-error" id={`${errorId}-removed-event-error`}>
         This occasion is no longer configured. Choose Anything or another current occasion before saving.
       </p>}
-      {fieldErrors.event_id?.map((message) => <p className="field-error" key={message}>{message}</p>)}
-      <label className="checkbox-label"><input type="checkbox" checked={draft.allow_multiple_purchases} onChange={(event) => change('allow_multiple_purchases', event.target.checked)} /> Allow multiple purchases</label>
-      {fieldErrors.allow_multiple_purchases?.map((message) => <p className="field-error" key={message}>{message}</p>)}
+      {fieldErrorGroup('event_id', fieldErrors.event_id ?? [])}
+      <label className="checkbox-label"><input type="checkbox" checked={draft.allow_multiple_purchases} onChange={(event) => change('allow_multiple_purchases', event.target.checked)} aria-invalid={fieldErrors.allow_multiple_purchases?.length ? true : undefined} aria-describedby={fieldErrors.allow_multiple_purchases?.length ? `${errorId}-allow_multiple_purchases-error` : undefined} /> Allow multiple purchases</label>
+      {fieldErrorGroup('allow_multiple_purchases', fieldErrors.allow_multiple_purchases ?? [])}
       <div className="form-actions">
          <button className="primary-button" type="submit" disabled={pending || invalidEventAssignment}>{pending ? 'Saving…' : 'Save gift'}</button>
         <button className="secondary-button" type="button" onClick={onCancel} disabled={pending}>Cancel</button>

@@ -462,11 +462,44 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     })
     await dialog.getByRole('button', { name: 'Delete gift', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Deleting…' })).toBeDisabled()
+    let releasePendingSession!: () => void
+    let observePendingSession!: () => void
+    const pendingSessionHeld = new Promise<void>((resolve) => { releasePendingSession = resolve })
+    const pendingSessionObserved = new Promise<void>((resolve) => { observePendingSession = resolve })
+    const pendingSessionResponse = page.waitForResponse((response) =>
+      response.request().method() === 'GET' && response.url().endsWith('/api/session/'))
+    await page.route('**/api/session/', async (route) => {
+      if (route.request().method() === 'GET') {
+        observePendingSession()
+        await pendingSessionHeld
+      }
+      await route.continue()
+    }, { times: 1 })
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await pendingSessionObserved
+    await expect(page.getByText('Checking your identity…')).toBeVisible()
+    await expect(dialog).toBeHidden()
+    await waitForRenderedFrames(page)
+    expect(await page.evaluate(() => document.querySelector('[inert]') !== null), 'an inert authenticated subtree is rendered while both requests are pending').toBe(true)
+    releasePendingSession()
+    await pendingSessionResponse
+    await expect(page.getByRole('heading', { name: 'Alex’s wishlist' })).toBeVisible()
+    await expect(dialog).toBeVisible()
+    await expect(dialog).toBeFocused()
+    await expect(dialog.getByRole('button', { name: 'Deleting…' })).toBeDisabled()
     await page.keyboard.press('Tab')
     await expect(dialog).toBeFocused()
+    const pendingDeleteResponse = page.waitForResponse((response) => response.request().method() === 'DELETE'
+      && response.url().endsWith(`/api/items/${deleteId}/`))
     releaseDelete()
+    expect((await pendingDeleteResponse).status()).toBe(503)
     await expect(page.getByRole('alert')).toContainText('Please retry.')
+    await expect(dialog).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    await expect(page.locator(`[data-delete-item-id="${deleteId}"]`)).toBeFocused()
     await page.unroute(`**/api/items/${deleteId}/`)
+    await page.locator(`[data-delete-item-id="${deleteId}"]`).click()
     await page.route(`**/api/items/${deleteId}/`, (route) => route.fulfill({
       status: 403,
       contentType: 'application/json',

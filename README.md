@@ -2,8 +2,8 @@
 
 A small, local family wishlist. Names and occasions are configured in YAML; gifts and purchase marks are stored in SQLite.
 
-The application is runnable, but final acceptance has an open keyboard-focus
-issue and a minor filter-label edge case. See [outstanding review findings](docs/verification/outstanding-issues.md).
+The repository review and follow-up fixes are recorded in the
+[review report](docs/verification/repo-review-2026-10-16.md).
 
 ## Local setup
 
@@ -11,9 +11,13 @@ Requirements: Python 3.14 and Node.js 24 or newer.
 
 ```sh
 python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade 'pip>=26.2'
 .venv/bin/python -m pip install -r backend/requirements.txt
 npm --prefix frontend ci
+npm --prefix frontend run install:browsers
 ```
+
+The browser install script uses the Playwright CLI installed by the frontend lockfile. On Linux, if Chromium reports missing system libraries, install the OS dependencies with `cd frontend && npx playwright install --with-deps chromium`; this may require administrator privileges. The browser download and OS dependencies are separate from `npm ci`.
 
 Edit `backend/config/family.yaml`, then start from the repository root:
 
@@ -57,5 +61,7 @@ Run the complete local check sequence from the repository root:
 ```sh
 bash scripts/verify.sh
 ```
+
+Before running browser verification on a fresh machine, run `npm --prefix frontend run install:browsers` to install Playwright's Chromium binary. The verification script does not download browsers implicitly.
 
 It stops on the first failed command and runs the file-backed Django suite, Django checks and migration consistency, dependency checks, frontend tests/lint/build, and isolated real-browser workflows at 1280×800 and 390×844. Browser verification uses temporary YAML and SQLite files under `/tmp/opencode`, allocates unused loopback ports per viewport, and allows only the exact generated frontend origin through the backend's `WISHLIST_EXTRA_CSRF_TRUSTED_ORIGIN` setting. It will not reuse occupied external server ports. See [verification evidence](docs/verification/family-wishlist.md) for actual versions and results.

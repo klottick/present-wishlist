@@ -12,10 +12,10 @@ export function DeleteItemDialog({ item, onDeleted, onCancel, getReturnFocusTarg
   const dialog = useRef<HTMLDivElement>(null)
   const dialogIdentityId = useRef(profile?.id)
   const previousPhase = useRef(phase)
-  const scope = useRef({ generation, phase, revalidate, onDeleted, onCancel, getReturnFocusTarget })
+  const scope = useRef({ generation, phase, profile, revalidate, onDeleted, onCancel, getReturnFocusTarget })
   const mounted = useRef(true)
   const pendingRef = useRef(false)
-  scope.current = { generation, phase, revalidate, onDeleted, onCancel, getReturnFocusTarget }
+  scope.current = { generation, phase, profile, revalidate, onDeleted, onCancel, getReturnFocusTarget }
 
   useEffect(() => {
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -32,7 +32,7 @@ export function DeleteItemDialog({ item, onDeleted, onCancel, getReturnFocusTarg
 
   useEffect(() => {
     if (phase === 'ready' && previousPhase.current !== 'ready' && profile?.id === dialogIdentityId.current) {
-      const target = dialog.current?.querySelector<HTMLElement>('[data-cancel]') ?? dialog.current
+      const target = dialog.current?.querySelector<HTMLElement>('[data-cancel]:not(:disabled)') ?? dialog.current
       target?.focus()
     }
     previousPhase.current = phase
@@ -50,8 +50,12 @@ export function DeleteItemDialog({ item, onDeleted, onCancel, getReturnFocusTarg
       if (!mounted.current || scope.current.generation !== requestGeneration || scope.current.phase !== 'ready') return
       scope.current.onDeleted()
     } catch (reason) {
-      if (!mounted.current || scope.current.generation !== requestGeneration) return
+      if (!mounted.current) return
+      const currentRequest = scope.current.generation === requestGeneration && scope.current.phase === 'ready'
+      const sameIdentityRecovery = scope.current.phase === 'ready' && scope.current.profile?.id === dialogIdentityId.current
+      if (!currentRequest && !sameIdentityRecovery) return
       if (reason instanceof ApiError && reason.failure.code === 'identity_required') {
+        if (!currentRequest) return
         void scope.current.revalidate()
         return
       }

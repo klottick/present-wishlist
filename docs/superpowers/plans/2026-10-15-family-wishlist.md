@@ -1,5 +1,10 @@
 # Family Wishlist Implementation Plan
 
+This is the historical implementation plan. All twelve tasks were executed;
+its original workspace and execution prerequisites describe the pre-Git project.
+For the current repository review and follow-up fixes, see
+`docs/verification/repo-review-2026-10-16.md` rather than redispatching these tasks.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the approved family wishlist with YAML-defined people/events, easy identity selection, private purchase information, and optional repeat purchases.
@@ -380,7 +385,8 @@ coders, Sol reviewers, and the controller retaining final acceptance authority.
 
 All twelve task-scoped gates have been executed. Whole-app review and one final
 fix/re-review wave are recorded in the plan-scoped ledger. The controller's
-fresh full verification passed (91 backend tests, 79 frontend tests, 2 browser
-workflows, lint/build/checks), but unconditional acceptance remains withheld for
-the residual keyboard-focus issue documented in
-`docs/verification/outstanding-issues.md`. Do not redispatch completed tasks.
+original full verification passed (91 backend tests, 79 frontend tests, 2 browser
+workflows, lint/build/checks), with a residual keyboard-focus finding at that
+handoff. The subsequent 2026-10-16 repository review resolved that finding and
+records the current acceptance/verification status in
+`docs/verification/repo-review-2026-10-16.md`. Do not redispatch completed tasks.

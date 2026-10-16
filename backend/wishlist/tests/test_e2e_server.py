@@ -2,6 +2,7 @@ import importlib.util
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 from unittest import TestCase
 from unittest.mock import Mock, call, patch
 
@@ -19,6 +20,25 @@ def load_e2e_server():
 
 
 class E2EServerOwnershipTests(TestCase):
+    def test_main_creates_missing_temporary_parent_and_cleans_up_run_directory(self):
+        server = load_e2e_server()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_parent = Path(temporary_directory) / "missing" / "e2e-runs"
+            self.assertFalse(temporary_parent.exists())
+            with (
+                patch.object(server, "TEMP_ROOT", temporary_parent, create=True),
+                patch.object(server, "available_loopback_port", side_effect=[8123, 8124]),
+                patch.object(server, "start_backend", return_value=Mock()),
+                patch.object(server.subprocess, "Popen", return_value=Mock()),
+                patch.object(server, "wait_for_port"),
+                patch.object(server, "stop_owned_processes"),
+                patch.object(server.STOP_REQUESTED, "is_set", return_value=True),
+            ):
+                self.assertEqual(server.main(), 0)
+
+            self.assertTrue(temporary_parent.is_dir())
+            self.assertEqual(list(temporary_parent.iterdir()), [])
+
     def test_backend_readiness_failure_stops_the_registered_child(self):
         server = load_e2e_server()
         original_popen = subprocess.Popen

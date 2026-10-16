@@ -52,4 +52,25 @@ describe('EventFilter', () => {
     expect(options[0]).toHaveValue('filter:all')
     expect(options[2]).toHaveValue('event:all-events-day')
   })
+
+  it('gives every configured occasion a distinct label without changing stable filter keys', async () => {
+    const onChange = vi.fn()
+    const collisionEvents: EventOption[] = [
+      { id: 11, key: 'all', label: 'All events', is_active: true },
+      { id: 12, key: 'special', label: 'All events (configured occasion)', is_active: true },
+      { id: 13, key: 'all-events-configured-occasion-special', label: 'All events (configured occasion) (all)', is_active: true },
+    ]
+    render(<EventFilter events={collisionEvents} value="all" onChange={onChange} />)
+
+    const select = screen.getByRole('combobox', { name: 'Filter by occasion' })
+    const allOptions = screen.getAllByRole('option')
+    expect(new Set(allOptions.map((option) => option.textContent)).size).toBe(allOptions.length)
+    const configured = allOptions.slice(2)
+    expect(new Set(configured.map((option) => option.textContent)).size).toBe(3)
+
+    await userEvent.selectOptions(select, 'event:all')
+    expect(onChange).toHaveBeenLastCalledWith({ key: 'all' })
+    await userEvent.selectOptions(select, 'event:special')
+    expect(onChange).toHaveBeenLastCalledWith({ key: 'special' })
+  })
 })

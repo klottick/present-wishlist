@@ -19,6 +19,17 @@ def workflow(name):
 
 
 class ReleaseWorkflowTests(TestCase):
+    def test_ci_preserves_failed_browser_diagnostics_without_retrying(self):
+        steps = workflow("ci.yaml")["jobs"]["application"]["steps"]
+        upload = next(step for step in steps if step.get("id") == "browser-diagnostics")
+        self.assertEqual(upload["if"], "failure()")
+        self.assertTrue(upload["uses"].startswith("actions/upload-artifact@"))
+        self.assertEqual(upload["with"]["path"], "frontend/test-results/")
+        self.assertEqual(upload["with"]["retention-days"], "7")
+        verification = next(step for step in steps if step.get("name") == "Install and verify")
+        self.assertEqual(verification["env"]["DEBUG"], "pw:api,pw:browser")
+        self.assertNotIn("continue-on-error", verification)
+
     def test_retried_publisher_rechecks_latest_release_before_login(self):
         publisher = workflow("publish-image.yaml")
         steps = publisher["jobs"]["publish"]["steps"]

@@ -20,6 +20,8 @@ jobs:
         with:
           node-version: '24'
       - name: Install and verify
+        env:
+          DEBUG: pw:api,pw:browser
         run: |
           set -euo pipefail
           python -m venv .venv
@@ -28,6 +30,15 @@ jobs:
           npm --prefix frontend ci
           npm --prefix frontend exec -- playwright install --with-deps chromium
           bash scripts/verify.sh
+      - name: Preserve failed browser diagnostics
+        id: browser-diagnostics
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: frontend/test-results/
+          if-no-files-found: warn
+          retention-days: 7
   containers:
     runs-on: ubuntu-latest
     timeout-minutes: 30

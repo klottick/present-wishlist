@@ -149,6 +149,15 @@ retries). Fresh full local verification then passed: 129 backend tests, 81 front
 tests, both browser workflows, checks, lint and build. Latest-head PR checks are
 required again before merge. The changes affect test setup/synchronization only.
 
+The next [CI run 38949578201](https://github.com/klottick/present-wishlist/actions/runs/38949578201)
+passed both architecture builds/smokes and all 129 backend/81 frontend tests,
+but the phone browser workflow timed out. Context cleanup's secondary protocol
+error masked the stalled operation, and the initial CI configuration uploaded no
+failure artifacts. Merge remains blocked. CI now retains failed browser traces
+for seven days and enables Playwright API/browser diagnostics; neither retries
+nor larger timeouts are used to turn this failure green. The instrumentation is
+covered by a workflow contract that failed before the change.
+
 ## Explicit execution decisions
 
 - Add an optional caller-owned pre-publication eligibility hook rather than

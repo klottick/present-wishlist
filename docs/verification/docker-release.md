@@ -8,6 +8,11 @@ published from `1ca854af68ca63b1907f530427ce5a086ce4c42e`. Real release workflow
 anonymous pulls, and source-free installation acceptance passed. No GHCR
 visibility change was needed or performed. Details and limits are below.
 
+This is evidence for the listed revisions, not a live test dashboard. For current
+instructions, use the [operations](../operations.md), [development](../development.md)
+and [release](../releases.md) guides. The original implementation/review sections
+retain their historical test totals and failure conditions.
+
 ## Evidence
 
 - Baseline `bash scripts/verify.sh`: 92 backend / 81 frontend tests, lint/build,
@@ -166,8 +171,8 @@ ARM CI and remote release acceptance subsequently passed as recorded above.
   frontend/assets, CSRF, privacy, volume/session persistence, fail-closed startup
   and termination. These read-only CI jobs did not publish registry artifacts.
 - The PR merge-preview tree matched the fully verified local source tree. The
-  final documentation update is checked again before merging; no release is
-  created as part of integration.
+  final documentation update was checked again before merging; no release was
+  created as part of that integration.
 
 ### Pre-merge test lifecycle corrections
 
@@ -189,8 +194,9 @@ focus, preserving its intended late-response assertion rather than weakening it.
 Both failures were investigated rather than hidden by retries. After correction,
 all 28 wishlist tests passed six consecutive stability runs (failure-stop, no
 retries). Fresh full local verification then passed: 129 backend tests, 81 frontend
-tests, both browser workflows, checks, lint and build. Latest-head PR checks are
-required again before merge. The changes affect test setup/synchronization only.
+tests, both browser workflows, checks, lint and build. Latest-head PR checks were
+required again before merge and subsequently passed as recorded below. The
+changes affected test setup/synchronization only.
 
 The next [CI run 38949578201](https://github.com/klottick/present-wishlist/actions/runs/38949578201)
 passed both architecture builds/smokes and all 129 backend/81 frontend tests,

@@ -1,15 +1,17 @@
 # Family wishlist verification evidence
 
-**Current controller status (2026-10-16):** the follow-up repository review
-resolved the outstanding UI findings and added their regression coverage.
-Verification passed: 92 backend tests, 81 frontend tests, lint/build/checks,
-both browser viewports, and six additional browser stability runs. See the
-[current review report](repo-review-2026-10-16.md) and
-[resolved findings](outstanding-issues.md).
+**Historical application checkpoint (2026-10-16, before Docker packaging):** the
+follow-up repository review resolved the outstanding UI findings and added their
+regression coverage. That revision passed 92 backend tests, 81 frontend tests,
+lint/build/checks, both browser viewports, and six additional browser stability
+runs. See the [application review](repo-review-2026-10-16.md) and
+[resolved findings](outstanding-issues.md). Later `v0.1.0` verification passed
+130 backend tests; [Docker release evidence](docker-release.md) records that
+release and its known limitations. Test totals here are not a current dashboard.
 
 The remaining sections are historical evidence from the 2026-10-15
 implementation and its original final fix wave; their counts describe that
-revision rather than the latest repository review.
+revision rather than the released application's later verification.
 
 Final coordinated fix-wave verification evidence, updated 2026-10-15. The initial fixed-port harness correctly refused occupied port 5174 rather than borrowing an unrelated Vite server. Following the controller's ruling, the fixture allocates fresh unused loopback ports for each viewport and passes only that exact frontend origin to Django. This update adds deterministic I1–I4 and M1–M2 regressions plus the CSRF write matrix; the earlier Task 12 counts are superseded by the fresh final counts below.
 
@@ -60,7 +62,7 @@ The full browser command was also run independently before `bash scripts/verify.
 - RED command: `.venv/bin/python backend/manage.py test wishlist.tests.test_startup --settings=project.test_settings` before `scripts/dev_backend.py` existed.
 - RED result: 3 expected `FileNotFoundError` errors for `/home/klottick/repos/present-wishlist/scripts/dev_backend.py`.
 - GREEN command: same startup test command after implementing launcher.
-- GREEN result at initial launcher implementation: 3 tests passed. The continuation adds coverage for environment defaults with CLI precedence, migration failure preventing sync/server, and server failure propagation; the current startup module passes 6 tests total.
+- GREEN result at initial launcher implementation: 3 tests passed. The continuation added coverage for environment defaults with CLI precedence, migration failure preventing sync/server, and server failure propagation; the startup module at that checkpoint passed 6 tests total.
 - For the continuation's launcher change, the environment-default regression was run RED first: it observed the repository path instead of the configured `FAMILY_CONFIG_PATH`. After using environment paths as parser defaults, all 6 startup tests passed.
 - Added real-child E2E supervisor regressions: backend readiness failure leaves no live child, and cleanup attempts every tracked handle even if one stop raises. These tests were added after the lifecycle change; no historical RED run is claimed for them.
 - CSRF origin config RED: two settings tests initially failed to import the missing `build_csrf_trusted_origins` helper. GREEN: 3 settings tests passed, including acceptance of only the exact loopback origin and rejection of wildcard, external, HTTPS, and path-bearing values.

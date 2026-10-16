@@ -3,7 +3,9 @@
 Date: 2026-10-16. Status: approved, implemented, reviewed and released as `v0.1.0`.
 Native amd64 and QEMU arm64 release smoke passed; both images pull anonymously.
 Downloaded Compose installation, privacy, persistence and private restore passed.
-See `docs/verification/docker-release.md` for digests, evidence and limitations.
+See [release verification](../../verification/docker-release.md) for digests,
+evidence and limitations. The following sections preserve the approved design;
+the final approval gate is historical, not a pending implementation step.
 
 ## Goal and agreed constraints
 
@@ -102,9 +104,11 @@ do not cancel a running publish halfway through. No prerelease channels initiall
 
 Buildx/QEMU or native runners may supply ARM execution; report emulated tests
 honestly. Failed architecture checks prevent final release tags being published.
-Attach `compose.yaml`, sample YAML, and `.env.example` to the GitHub release so
+Attach `compose.yaml`, sample YAML, and the environment template to the GitHub release so
 installation does not require cloning the repository. Compose defaults to that
 exact release version rather than an unpinned `latest` tag.
+The generated `.env.example` is published by GitHub as `default.env.example`;
+installation instructions use the public attachment name and copy it to `.env`.
 Only the attachment job receives `contents: write`; the generic image publisher
 does not need permission to modify repository contents or releases.
 
@@ -128,14 +132,15 @@ or using SQLite's backup mechanism; warn against `docker compose down -v`.
 Take a backup before upgrades; do not promise reverse migrations or automatic
 rollback across schema changes. No automatic updater or database replacement.
 
-## Scope and next gate
+## Original scope and approval gate (historical)
 
 No authentication, TLS automation, managed hosting, Kubernetes, external database,
 or custom AI skill. Existing official Docker skills guide setup, but releases
-must work without an AI agent. No source-code changes or publication occur at
-this design stage. After written-spec approval, prepare the implementation plan
-and agree its execution method. Creating a real release/tag or changing package
-visibility requires explicit approval during execution.
+must work without an AI agent. At the design stage, source changes and publication
+were gated on written-spec/plan approval and execution-method selection. Those
+stages were completed before implementation. The user subsequently authorized
+`v0.1.0`; future releases/tags and package visibility changes still require
+explicit approval.
 
 ## References
 

@@ -2,10 +2,15 @@
 
 This is the historical implementation plan. All twelve tasks were executed;
 its original workspace and execution prerequisites describe the pre-Git project.
-For the current repository review and follow-up fixes, see
-`docs/verification/repo-review-2026-10-16.md` rather than redispatching these tasks.
+For the application review and follow-up fixes, see
+[the review report](../../verification/repo-review-2026-10-16.md) rather than
+redispatching these tasks. The [later Docker release evidence](../../verification/docker-release.md)
+records container distribution and subsequent verification.
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Historical execution instructions:** The original workflow used
+> `subagent-driven-development` or `executing-plans` and task checkboxes. Those
+> instructions and the pre-Git assumptions below are retained as planning history,
+> not current setup requirements or authorization to rerun completed tasks.
 
 **Goal:** Build the approved family wishlist with YAML-defined people/events, easy identity selection, private purchase information, and optional repeat purchases.
 

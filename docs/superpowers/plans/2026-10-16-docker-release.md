@@ -1,6 +1,10 @@
 # Prebuilt Docker Release Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Historical plan:** Implementation and first-release acceptance are complete.
+> The original task checkboxes below were not maintained as the execution log;
+> they preserve planned steps, not current outstanding work. Actual results and
+> deviations are in [release verification](../../verification/docker-release.md).
+> Do not rerun completed tasks or treat original approval gates as still pending.
 
 **Goal:** Distribute a tested, public, multi-platform wishlist image that users run without building source or installing Python/Node.
 
@@ -160,7 +164,7 @@ Tasks 1–3 are a coupled runtime chain. Task 4 is independent of image internal
 
 **Files:** Modify `README.md`, the Docker design's status, and create `docs/verification/docker-release.md`. Fix only concrete integration findings in earlier task files, with regressions.
 
-**Interfaces:** User installs just release `compose.yaml`, `family.example.yaml`, and `.env.example`; copies examples to `family.yaml` and `.env`, generates a stable secret (e.g. `openssl rand -hex 32`), and runs Compose. No source clone or local build is required.
+**Interfaces:** User installs release `compose.yaml`, `family.example.yaml`, and `default.env.example`; copies examples to `family.yaml` and `.env`, generates a stable secret (e.g. `openssl rand -hex 32`), and runs Compose. GitHub renames the generated `.env.example` attachment to `default.env.example`. No source clone or local build is required.
 
 - [ ] **1. Document the install/update path** separately from existing source development. Explain both Linux architectures/64-bit ARM, Docker Desktop Linux-container mode, selecting an exact release version, stable secret/session behavior, URL `http://localhost:8000`, logs/health, and restart after YAML edits. For LAN use show explicit bind-address/hostname changes, not wildcard allowed hosts; keep the trust-model warning prominent.
 - [ ] **2. Document operational safety.** Stop before filesystem backups, copy the database plus family YAML and private `.env`, restore into a volume with UID/GID 10001 ownership, and test restoration using isolated resources. Prefer `docker compose stop`/`start` for backup so a private helper container can mount the declared volume. Explain `pull` → `up -d` updates after backup, no automatic schema rollback, and that `down -v` destroys stored data. Include troubleshooting for missing YAML, invalid secret/hosts, wrong permissions, unhealthy startup, unsupported platform, and private-package pull errors. Do not print or commit private secret values.
@@ -171,7 +175,7 @@ Tasks 1–3 are a coupled runtime chain. Task 4 is independent of image internal
 - [ ] **7. Verify the published product anonymously.** Use a private empty `DOCKER_CONFIG` directory so cached login cannot mask access restrictions; inspect the exact-version manifest for both architectures and matching expected combined digest. Pull/smoke each platform by published reference, fetch the three release assets into a fresh private directory, supply test config/secret, and run the exact documented Compose install without source checkout/builds. Confirm persistence and recipient privacy. The matching `latest`/SHA references must resolve to the expected release digest.
 - [ ] **8. Record the actual release URL/version/digests/results**, commit final evidence, and report any post-release documentation commit separately. Leave unrelated images, builders, networks, data, and global settings untouched. Only call the Docker release complete when the real workflow and anonymous install have passed.
 
-## Planning self-review and execution gate
+## Original planning self-review and execution gate (historical)
 
 Coverage: image/static/runtime and security → Tasks 1–3; YAML/storage/startup and lifecycle → Tasks 2–3; canonical version/order/asset bundle → Task 4; reuse/permissions/two-platform publishing → Task 5; installation/backup/review/public pull/real workflow acceptance → Task 6. Each Review Focus case has an explicit test owner above. Signatures, environment names, mount paths, port, UID/GID, and CLI flags are consistent across tasks.
 
@@ -179,4 +183,4 @@ Planning checks used read-only registry inspection: Python `3.14.4-slim` and Nod
 
 Local tooling: Docker Engine 29.7.2 and Buildx 0.36.1 on amd64. ARM runtime support must be demonstrated during execution; base-image availability alone does not demonstrate it.
 
-**Execution recommendation:** Native implementation in this session with one fresh whole-change reviewer, because the six tasks share a tight settings/startup/image/release interface and KISS is an explicit priority. Subagent-driven implementation with fresh per-task reviewers is also available if the user prefers stronger intermediate gates. Wait for plan approval and method selection before implementation.
+**Original execution recommendation:** Native implementation with one fresh whole-change reviewer, because the six tasks share a tight settings/startup/image/release interface and KISS is an explicit priority. The alternative was subagent-driven implementation with per-task reviewers. The user approved the plan and selected native execution; implementation, reviews, merge and authorized first publication subsequently completed.

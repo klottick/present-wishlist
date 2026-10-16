@@ -2,6 +2,9 @@
 
 Status: complete. Independent Luna re-reviews accepted the frontend and tooling
 fixes; no Critical or Important review findings remain open in scope.
+This is the historical pre-Docker review, not a continuously updated status
+report. Later packaging, release checks and known verification limitations are
+recorded in [Docker release evidence](docker-release.md).
 Baseline: `29ffd43` on `main`. The user requested Luna subagent reviewers;
 backend, frontend, and tooling were reviewed separately by three Lunas, with
 controller triage and final verification. This review does not add deployment,

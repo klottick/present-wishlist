@@ -1,38 +1,64 @@
-# Family wishlist
+# Family Wishlist
 
-A small, local family wishlist. Names and occasions are configured in YAML; gifts and purchase marks are stored in SQLite.
+A self-hosted wishlist for families to share gift ideas and coordinate purchases
+without showing the recipient who bought what. Built with React and Django, with
+SQLite storage and a prebuilt Docker image.
 
-The repository review and follow-up fixes are recorded in the
-[review report](docs/verification/repo-review-2026-10-16.md).
+**For trusted family use only.** Choosing a name is not authentication. Anyone
+with access can switch identities and reveal surprises. Do not expose this app
+to the internet or untrusted users; accounts and TLS are not included.
 
-## Docker install (no source build)
+## Features
 
-Prebuilt [v0.1.0](https://github.com/klottick/present-wishlist/releases/tag/v0.1.0)
-is available for Linux `amd64` and `arm64`, with verified anonymous pulls and a
-source-free Compose installation. See [Docker release verification](docs/verification/docker-release.md).
+- Choose a family member's name without creating an account.
+- Add, edit and remove gifts with an optional link, price and notes.
+- Organize gifts by configurable occasions or leave them as Anything.
+- Coordinate purchases on other family members' lists; purchase details are
+  omitted from the recipient's API responses and interface.
+- Allow multiple different buyers for selected gifts, with each buyer able to
+  undo only their own mark.
+- Keep family names and occasions in YAML, with persistent gifts and sessions.
+- Use the responsive interface on desktop and mobile.
 
-**Trusted family use only.** Choosing a name is not authentication. Anyone with
-access can switch names and reveal surprises. Do not expose this app to the
-internet or untrusted users. Container packaging does not add accounts or TLS.
+## Screenshots
+
+The screenshots show the released application with fictional names and gift data.
+
+### Your wishlist
+
+Manage gift ideas without purchase statuses or buyer information appearing on
+your own list.
+
+![Alex's wishlist on desktop, showing gift details, occasions and owner editing controls without purchase information](docs/images/wishlist-owner-desktop.png)
+
+### Coordinating gifts
+
+Other family members can see purchase marks and coordinate their own purchases.
+
+![Sam browsing Alex's wishlist on desktop, with buyer names, purchase controls and an option to undo Sam's own purchase](docs/images/wishlist-buyer-desktop.png)
+
+### Mobile view
+
+<img src="docs/images/wishlist-mobile.png" alt="Alex's wishlist on a narrow mobile screen, with an occasion filter and vertically arranged gift cards" width="320">
+
+## Quick start
 
 Install Docker Engine with Compose, or Docker Desktop in **Linux-container mode**.
-Images target Linux `amd64` and `arm64`; ARM needs a **64-bit OS**, not 32-bit
-Raspberry Pi OS. Windows/macOS use Docker's Linux VM. Python/Node are not required.
+Images support Linux `amd64` and `arm64`; ARM requires a 64-bit OS. Python, Node.js
+and a source checkout are not required. Windows and macOS use Docker's Linux VM.
 
-1. Choose an exact stable version on the repository's
-   [Releases page](https://github.com/klottick/present-wishlist/releases).
-   Download its **attached** `compose.yaml`, `family.example.yaml`, and
-   `default.env.example` (not the source archives) into an empty directory.
-   GitHub renames the uploaded `.env.example` attachment to `default.env.example`.
+1. Open the [v0.1.0 release](https://github.com/klottick/present-wishlist/releases/tag/v0.1.0)
+   and download its attached `compose.yaml`, `family.example.yaml` and
+   `default.env.example` into a new directory. Use these assets, not the source
+   archives. GitHub renames the uploaded `.env.example` to `default.env.example`.
 2. Copy `family.example.yaml` to `family.yaml` and `default.env.example` to `.env`.
-   Edit the names/events using the YAML format below; keep keys stable when
-   renaming. Ensure the YAML is readable by container UID 10001 (for example,
-   mode `0644` inside a private installation directory on Linux).
-3. Generate a private random secret, e.g. `openssl rand -hex 32`, and set
-   `DJANGO_SECRET_KEY` in `.env`. Do not share or commit this file; use mode
-   `0600` on Unix. Keep the same secret across updates to preserve sessions.
-   The downloaded example pins `WISHLIST_VERSION` to that release.
-4. From that directory:
+   Edit the family names and occasions in `family.yaml`.
+3. Generate a private random secret with `openssl rand -hex 32` and set
+   `DJANGO_SECRET_KEY` in `.env`. Keep this file private and retain the same secret
+   across updates. On Linux/macOS, use `chmod 600 .env` and ensure `family.yaml`
+   is readable by container UID 10001, for example `chmod 644 family.yaml` inside
+   a private installation directory. The template already pins the image version.
+4. From that directory, run:
 
    ```sh
    docker compose config --quiet
@@ -40,111 +66,16 @@ Raspberry Pi OS. Windows/macOS use Docker's Linux VM. Python/Node are not requir
    docker compose up -d --wait
    ```
 
-Open **http://localhost:8000**. No local build, Vite, Node, or Python server is
-needed. `docker compose ps` shows health; `docker compose logs --tail=100 app`
-shows startup errors. `/healthz/` returns readiness without family data.
-Avoid sharing `docker compose config` output without `--quiet`: it includes secrets.
+Open **http://localhost:8000**, choose your name, and start your wishlist. Check
+`docker compose ps` for health or `docker compose logs --tail=100 app` for startup
+errors. Port 8000 must be available. The default binding is loopback-only.
 
-### Configuration and trusted LAN access
+Keep `.env` out of version control. Avoid sharing `docker compose config` output
+without `--quiet`, because the resolved configuration contains your secret.
 
-The app mounts `./family.yaml` read-only at `/config/family.yaml` and stores SQLite
-in the `wishlist-data` named volume at `/data/wishlist.sqlite3`. Use one application
-instance per volume. Edit YAML, then run `docker compose restart app` to sync.
-If your editor replaces the file instead of writing it in place, use
-`docker compose up -d --force-recreate app` to refresh the bind mount.
+## Family configuration
 
-Loopback-only access is the default. For a trusted LAN, explicitly set in `.env`:
-
-```dotenv
-WISHLIST_BIND_ADDRESS=0.0.0.0
-DJANGO_ALLOWED_HOSTS=wishlist.home,192.168.1.20
-```
-
-Use your server's actual DNS name/IP, then visit e.g. `http://192.168.1.20:8000`.
-Do not use wildcard allowed hosts. `DJANGO_CSRF_TRUSTED_ORIGINS` normally stays
-empty for this same-origin setup; optional entries must be exact HTTP/HTTPS
-origins, not paths or wildcards. Forwarded proxy headers are not trusted.
-Firewall access to trusted devices; public hosting/hardening is outside scope.
-
-### Backup, restore, and updates
-
-The following shell examples are for Linux/macOS (adapt paths in PowerShell).
-Protect the backup directory: it contains all family data and your secret.
-Stop before copying SQLite; do not copy a live database file.
-
-```sh
-mkdir -m 700 backup
-docker compose stop app
-docker compose cp app:/data/wishlist.sqlite3 ./backup/wishlist.sqlite3
-cp family.yaml .env backup/
-chmod 600 backup/* backup/.env
-docker compose start app
-```
-
-Restore first into an **isolated installation with a fresh named volume**, not
-over your running family's data. Put the backup directory in the new installation
-alongside its Compose file. Restore YAML as readable by the container, but keep
-`.env` private. The host shell streams the private database through stdin, so no
-backup permissions are relaxed. Pull the same image version, then run this
-non-root helper (the application must remain stopped):
-
-```sh
-cp ./backup/family.yaml ./backup/.env .
-chmod 644 family.yaml
-chmod 600 .env
-docker compose pull
-docker compose run --rm -T --no-deps --entrypoint python app -c \
-  "import os,shutil,sys; os.umask(0o077); dst=open('/data/wishlist.sqlite3','xb'); shutil.copyfileobj(sys.stdin.buffer,dst); dst.close()" \
-  < ./backup/wishlist.sqlite3
-docker compose up -d --wait
-```
-
-This refuses to overwrite an existing database and creates it as UID/GID
-`10001:10001` with private permissions in the fresh volume. Verify gifts and
-purchase privacy before relying on the restored installation. Never run two
-apps against the same SQLite volume, use `chmod 777`, or switch the service to root
-to hide permission problems. Keep the backup's secret to preserve sessions.
-
-Before updating, back up as above. Set `WISHLIST_VERSION` in `.env` to the desired
-exact stable version, then `docker compose pull` and `docker compose up -d --wait`.
-Migrations and YAML synchronization run before serving. There is **no automatic
-schema rollback**: restoring an old image may require restoring its matching
-pre-upgrade database backup. Normal `stop`, `start`, and `down` preserve the named
-volume; **`docker compose down -v` destroys stored gifts, purchases, and sessions**.
-
-### Troubleshooting
-
-- Missing YAML: create the actual `family.yaml` file first. Compose deliberately
-  refuses to create a directory in its place. Invalid YAML stops startup.
-- Invalid secret/hosts: use a random secret of at least 50 characters (64 hex
-  characters recommended); specify exact hosts/IPs without schemes or ports.
-- Permission denied: YAML must be readable and the data volume writable by UID
-  10001. A bind-mounted data directory needs correct ownership; the default named
-  volume initializes ownership automatically. Restore into a fresh volume rather
-  than changing an existing installation's ownership blindly.
-- Unhealthy/restarting: inspect `docker compose logs --tail=100 app` for validation,
-  migration, or sync failure. Startup fails closed; do not bypass checks.
-- Unsupported platform: use `amd64` or 64-bit `arm64` Linux containers; no 32-bit
-  ARM image is supplied.
-- Pull denied/not found: check the version exists and GHCR package visibility is
-  public. A public GitHub repository does **not** make its image public. End users
-  should not need a login/PAT; report a private-package release as a release defect.
-
-## Source development setup
-
-Requirements: Python 3.14 and Node.js 24 or newer.
-
-```sh
-python3 -m venv .venv
-.venv/bin/python -m pip install --upgrade 'pip>=26.2'
-.venv/bin/python -m pip install -r backend/requirements.txt
-npm --prefix frontend ci
-npm --prefix frontend run install:browsers
-```
-
-The browser install script uses the Playwright CLI installed by the frontend lockfile. On Linux, if Chromium reports missing system libraries, install the OS dependencies with `cd frontend && npx playwright install --with-deps chromium`; this may require administrator privileges. The browser download and OS dependencies are separate from `npm ci`.
-
-Edit `backend/config/family.yaml`, then start from the repository root:
+The installation's `family.yaml` defines the available people and occasions:
 
 ```yaml
 members:
@@ -152,85 +83,56 @@ members:
   sam: Sam
 events:
   birthday: Birthday
-  winter_holiday: Winter holiday
+  christmas: Christmas
 ```
 
-The lowercase keys are stable identities; labels are the names people see. Keep a key when renaming a person or occasion, so existing gifts, event assignments, and purchase marks continue to refer to the same records. Keys use lowercase letters, numbers, hyphens, and underscores, begin with a letter, and are at most 80 characters. Labels are trimmed, unique within their section (case-insensitively), and at most 80 characters.
+Keys are permanent identities; labels are the displayed names. Rename a person
+or occasion by changing its label, not its key. Anything is built in and must
+not be added to the event mapping.
 
-```sh
-.venv/bin/python scripts/dev_backend.py
-```
-
-This migrates the development database, synchronizes YAML, and starts Django on `127.0.0.1:8000`; the Vite frontend is started separately:
-
-```sh
-npm --prefix frontend run dev
-```
-
-The launcher accepts `--config PATH`, `--database PATH`, and `--port PORT` (default `8000`). `FAMILY_CONFIG_PATH` and `WISHLIST_DB_PATH` provide the config/database defaults for isolated environments; explicit `--config` or `--database` values take precedence. YAML validation/sync happens before the server starts; an invalid or unreadable config fails closed. After changing YAML, restart the backend to synchronize it.
+Restart the backend after YAML changes with `docker compose restart app`. If your
+editor replaces the file, use `docker compose up -d --force-recreate --wait app`
+to refresh its bind mount. See the [configuration guide](docs/configuration.md)
+for validation rules, removing/reactivating entries and development paths.
 
 ## Using the wishlist
 
-Choose your configured name when prompted, then add gifts to your list. Leave Event set to **Anything** for an item without an occasion. An occasion filter includes those Anything gifts in addition to gifts assigned to the selected occasion; the Anything-only filter shows only unassigned gifts.
+1. Choose your configured name. Use **My wishlist** to manage your gifts and
+   **Family wishlists** to browse someone else's list.
+2. Assign a gift to one occasion or leave it as **Anything**. An occasion filter
+   includes Anything gifts; the Anything-only filter shows only unassigned gifts.
+3. Mark someone else's gift purchased. Ordinary gifts allow one buyer; gifts
+   with **Allow multiple purchases** allow one mark per different buyer. There is
+   no quantity field. Buyers can undo only their own marks.
+4. Use the refresh control to see changes from other people. Live push updates
+   are not provided.
 
-Each buyer can mark an ordinary item once. A competing mark is rejected if another buyer has already marked it. An item configured to allow multiple purchases can be marked once by each buyer; a buyer can undo only their own mark. There is no quantity field. Owners do not receive purchase information in item API responses, and the owner UI does not display buyers.
+Tabs sharing one browser session share the selected name. Use separate browser
+profiles for concurrent identities. Purchase privacy prevents accidental
+disclosure in the recipient view; it does not prevent deliberate impersonation.
+Avoid storing credentials or sensitive information in gift notes.
 
-Removing a person or occasion from YAML archives the existing record instead of erasing it. Archived members and event assignments remain visible where already used, and their records and purchase marks are preserved. An archived event cannot be newly assigned to another item. Restore the same key to reactivate that record.
+## Storage and updates
 
-Identity selection is a shared-tab convenience, not an account system. Tabs in one browser share the selected profile, so switching names affects those tabs; use separate browser profiles for separate concurrent identities. A future login/account integration is not implemented: name selection is not authentication, and this app is trust-based. Do not expose it to untrusted users or put real credentials or sensitive secrets in notes. No authentication, managed hosting, calendar dates, or live push updates are provided.
+The container reads `family.yaml` read-only and stores gifts, purchases and
+sessions in a persistent named volume. Use one application instance per volume.
+Back up the database, family file and `.env` before upgrading; keep the Compose
+project name stable so updates reuse the original volume.
 
-## Reusing image publication across projects
+**`docker compose down -v` deletes stored gifts, purchases and sessions.** Normal
+stop/start and `docker compose down` preserve the named volume. There is no
+automatic schema rollback.
 
-Keep each project's Dockerfile, application tests, version guard, and serialized
-release caller local. Only the generic build/smoke/push workflow is shared. For a
-different stack, a caller's publishing job can look like this (after its own
-`prepare` job validates the stable release and tests the application):
+Follow the [operations guide](docs/operations.md) for trusted LAN access,
+environment settings, backup/restore, exact-version updates and troubleshooting.
 
-```yaml
-publish:
-  needs: [prepare]
-  permissions:
-    contents: read
-    packages: write
-  uses: klottick/present-wishlist/.github/workflows/publish-image.yaml@41af090209bf25666410809a976e3d8bcb2baa41
-  with:
-    image: ghcr.io/your-name/your-project
-    version: ${{ needs.prepare.outputs.version }}
-    context: .
-    dockerfile: Dockerfile
-    platforms: linux/amd64,linux/arm64
-    smoke-command: ./ci/smoke-image.sh "$IMAGE" "$PLATFORM"
-    pre-publish-command: ./ci/check-release-order.sh "$VERSION"
-```
+## Development and documentation
 
-That immutable reference pins the audited publisher implementation in this
-repository. Review and deliberately update the pin when adopting later changes.
-The publisher checks out the caller's event commit, not this repository. The smoke
-command is trusted repository code, never user-supplied release text. It receives
-the built image/platform and must exit nonzero on failure. Both tested images are
-retained and pushed without rebuilding; final version, `sha-<full-commit>`, and
-`latest` aliases use those digests. No shared infrastructure repository is needed.
-The optional pre-publish hook refreshes the caller's release-order check inside
-the publishing job; supply it so rerunning an old failed job cannot move `latest`
-backward after a newer release. The caller must hold its release concurrency lock.
-
-Only published canonical stable releases trigger this project's caller. Publication
-is serialized, older/equal versions are rejected, and an existing exact image tag
-is never silently overwritten. Registry tag updates are **not atomic**: after a
-partial failure, inspect all tags/digests and explicitly plan repair; do not blindly
-rerun the whole release. If only asset attachment failed after successful image
-publication, use GitHub Actions' **Re-run failed jobs** so only attachment retries.
-See the Actions run summary for the combined digest; releases attach
-`image-digest.txt` too. Staging tags are run-specific and are not installation tags.
-
-## Verification
-
-Run the complete local check sequence from the repository root:
-
-```sh
-bash scripts/verify.sh
-```
-
-Before running browser verification on a fresh machine, run `npm --prefix frontend run install:browsers` to install Playwright's Chromium binary. The verification script does not download browsers implicitly.
-
-It stops on the first failed command and runs the file-backed Django suite, Django checks and migration consistency, dependency checks, frontend tests/lint/build, and isolated real-browser workflows at 1280×800 and 390×844. Browser verification uses temporary YAML and SQLite files under `/tmp/opencode`, allocates unused loopback ports per viewport, and allows only the exact generated frontend origin through the backend's `WISHLIST_EXTRA_CSRF_TRUSTED_ORIGIN` setting. It will not reuse occupied external server ports. See [verification evidence](docs/verification/family-wishlist.md) for actual versions and results.
+- [Development and testing](docs/development.md): Python/Node setup, local servers
+  and `bash scripts/verify.sh`.
+- [Releases and publisher reuse](docs/releases.md): multi-platform GHCR publication,
+  recovery and adapting the reusable workflow to another stack.
+- [Documentation index](docs/README.md): all guides, design records and historical
+  reviews.
+- [Release verification](docs/verification/docker-release.md): published digests,
+  anonymous installation checks and known verification limitations.

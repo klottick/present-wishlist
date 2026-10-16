@@ -2,8 +2,13 @@
 
 Date: 2026-10-15
 Revision: YAML-managed members and events added following conversational approval.
-Status: Approved by the user and implemented. Current review and verification
-status is recorded in `docs/verification/repo-review-2026-10-16.md`.
+Status: Approved by the user and implemented. This historical specification
+describes the original source-development scope. Container distribution was
+subsequently added by the [Docker release design](2026-10-16-docker-release-design.md).
+See the [application review](../../verification/repo-review-2026-10-16.md) and
+[release evidence](../../verification/docker-release.md) for revision-specific
+verification. Exclusions below describe the original scope, not a claim that
+Docker packaging is still unimplemented. Authentication remains out of scope.
 
 ## 1. Intent and success criteria
 

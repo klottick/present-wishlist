@@ -7,10 +7,9 @@ The repository review and follow-up fixes are recorded in the
 
 ## Docker install (no source build)
 
-**Publication is pending:** the Docker implementation passes local and PR checks, but no
-prebuilt release has been published yet. The following is the install path once
-the first release passes its publication checks; `0.1.0` is currently illustrative.
-See [Docker verification and remaining gates](docs/verification/docker-release.md).
+Prebuilt [v0.1.0](https://github.com/klottick/present-wishlist/releases/tag/v0.1.0)
+is available for Linux `amd64` and `arm64`, with verified anonymous pulls and a
+source-free Compose installation. See [Docker release verification](docs/verification/docker-release.md).
 
 **Trusted family use only.** Choosing a name is not authentication. Anyone with
 access can switch names and reveal surprises. Do not expose this app to the
@@ -23,8 +22,9 @@ Raspberry Pi OS. Windows/macOS use Docker's Linux VM. Python/Node are not requir
 1. Choose an exact stable version on the repository's
    [Releases page](https://github.com/klottick/present-wishlist/releases).
    Download its **attached** `compose.yaml`, `family.example.yaml`, and
-   `.env.example` (not the source archives) into an empty directory.
-2. Copy `family.example.yaml` to `family.yaml` and `.env.example` to `.env`.
+   `default.env.example` (not the source archives) into an empty directory.
+   GitHub renames the uploaded `.env.example` attachment to `default.env.example`.
+2. Copy `family.example.yaml` to `family.yaml` and `default.env.example` to `.env`.
    Edit the names/events using the YAML format below; keep keys stable when
    renaming. Ensure the YAML is readable by container UID 10001 (for example,
    mode `0644` inside a private installation directory on Linux).

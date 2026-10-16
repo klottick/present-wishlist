@@ -2,10 +2,11 @@
 
 ## Status
 
-Implementation submitted through [PR #1](https://github.com/klottick/present-wishlist/pull/1);
-**no release published**. The user authorized pushing, reviewing and merging the
-PR. Release/tag creation and any GHCR visibility change still require separate
-approval. Passing verification CI is not proof of publishing or anonymous access.
+Implementation merged through [PR #1](https://github.com/klottick/present-wishlist/pull/1).
+The user separately authorized [v0.1.0](https://github.com/klottick/present-wishlist/releases/tag/v0.1.0),
+published from `1ca854af68ca63b1907f530427ce5a086ce4c42e`. Real release workflow,
+anonymous pulls, and source-free installation acceptance passed. No GHCR
+visibility change was needed or performed. Details and limits are below.
 
 ## Evidence
 
@@ -39,19 +40,61 @@ approval. Passing verification CI is not proof of publishing or anonymous access
 - Official action releases resolved to full commit pins. Official actionlint
   **1.7.12** archive SHA256 verified before use; all workflows pass actionlint.
 
-## Remaining acceptance gates
+## v0.1.0 remote acceptance
 
-- Local ARM execution is unavailable; arm64 build/smoke **passed under QEMU in
-  GitHub CI**, as recorded below. No privileged local host emulation was installed.
-- After separate authorization, observe the first stable release workflow.
-  Registry permission/absence-check behavior is not yet proven by verification CI.
-- Confirm GHCR public visibility. With a private, empty `DOCKER_CONFIG`, inspect
-  both platform manifests and pull the published images anonymously; match exact
-  version, full-SHA and latest digests with the Actions output.
-- Download attached install files into a fresh directory and follow README
-  installation without checkout/builds; recheck persistence and purchase privacy.
-- Record actual release URL, version, combined/platform digests and native/emulated
-  results. None are available yet, so this is not a completed Docker release.
+- Main [Verify run 38950738618](https://github.com/klottick/present-wishlist/actions/runs/38950738618)
+  passed at the release source: 130 backend tests, 81 frontend tests, both browser
+  workflows, checks/lint/build, amd64 and QEMU arm64 image smoke.
+- [Release run 38951896001](https://github.com/klottick/present-wishlist/actions/runs/38951896001)
+  passed `prepare`, `publish / publish`, and `attach`. Raw publishing-job logs
+  confirm actual `PASS linux/amd64` and `PASS linux/arm64` before publication.
+  This exercised authenticated first-publication absence handling and registry
+  writes; it does not prove every registry failure/retry scenario remotely.
+- Anonymous registry requests and Docker manifest inspection with a private,
+  empty `DOCKER_CONFIG` confirmed exactly Linux amd64/arm64. Anonymous pulls
+  fetched amd64 by version and arm64 by immutable platform digest. No credentials
+  were copied into that configuration; it remained `{}`. The local GitHub CLI's
+  package metadata API lacked `read:packages` scope; no token scope was expanded.
+  Public accessibility is established by the actual anonymous manifest/pulls.
+- `0.1.0`, `sha-1ca854af68ca63b1907f530427ce5a086ce4c42e`, and `latest` each
+  matched the release's `image-digest.txt` and the original registry response's
+  `Docker-Content-Digest`/SHA256:
+
+  | Manifest | Digest |
+  | --- | --- |
+  | Combined | `sha256:89d5bc2f5fccf8e6cb04bf3183a96ece2d52e96488d82fd62f1ea8c72ceef6d2` |
+  | Linux amd64 | `sha256:56a06766bd86fbe56a961267c599e8f4163aca1bc3b2d013d368bf4b712d39f4` |
+  | Linux arm64 | `sha256:29b32ec09b9dea3043da3798d7165dccf8f2fa9186e60bf3fc6d916fb368294e` |
+
+- Actual downloaded amd64 image passed the complete stdlib smoke again locally:
+  static/cache, CSRF, privacy, non-root storage, replacement/restart persistence,
+  fail-closed startup and termination. ARM ran under QEMU on GitHub's x86_64
+  runner, **not natively or locally**; no privileged local emulation was installed.
+- All four assets were downloaded anonymously into an empty, private directory;
+  their SHA256 values matched GitHub's asset metadata. GitHub renamed the uploaded
+  `.env.example` to **`default.env.example`**. This is documented GitHub filename
+  sanitization, not missing file contents. Installation instructions and release
+  notes now use the actual attached filename, copied to `.env`. The tag/image were
+  not moved or rebuilt; documentation corrections are subsequent commits.
+- Downloaded Compose/YAML/environment examples were used without a checkout,
+  local build, or development server. Quiet validation and anonymous pull passed.
+  The default host port 8000 was already owned by unrelated `qwen-vllm`; that
+  service was left untouched. An acceptance-only Compose override changed only
+  the published loopback port. The source-free app became healthy.
+- Real Chromium selected Alex and created a gift in the published-image UI;
+  the gift was visible at 1280×800 and 390×844 with no horizontal overflow.
+  Sam marked it purchased through a separate API session. Force-recreating the
+  app preserved both sessions, the gift and buyer mark; Alex's response omitted
+  all purchase/control fields.
+- The app was stopped, SQLite/YAML/secret backed up into host-private `0600`
+  files, then restored via stdin into a fresh non-root volume. A second restore
+  refused overwrite with `FileExistsError`. Restored UID 10001 / mode `0600`
+  database preserved sessions, gift and buyer privacy. Reloading Chromium also
+  preserved the original Alex session and gift without purchase details.
+- Probe-owned containers, networks and fresh volumes were removed and label
+  queries confirmed none remained; unrelated `qwen-vllm` stayed running.
+- Remaining limits: no native ARM hardware, real-family LAN deployment or future
+  schema upgrade was exercised. These are not claims made by this release.
 
 ## Independent review and corrections
 
@@ -103,7 +146,7 @@ still run; combining both log streams would strengthen that diagnostic assertion
   app without removing its volume; both UI-created gifts remained.
 - `git diff --check`: clean.
 
-ARM CI subsequently passed as recorded below; remote release checks remain pending.
+ARM CI and remote release acceptance subsequently passed as recorded above.
 
 ## PR review and real CI
 
@@ -153,20 +196,26 @@ The next [CI run 38949578201](https://github.com/klottick/present-wishlist/actio
 passed both architecture builds/smokes and all 129 backend/81 frontend tests,
 but the phone browser workflow timed out. Context cleanup's secondary protocol
 error masked the stalled operation, and the initial CI configuration uploaded no
-failure artifacts. Merge remains blocked. CI now retains failed browser traces
+failure artifacts. This blocked merge at that point. CI now retains failed browser traces
 for seven days and enables Playwright API/browser diagnostics; neither retries
 nor larger timeouts are used to turn this failure green. The instrumentation is
 covered by a workflow contract that failed before the change.
+
+The subsequent latest-head PR run 38950219083 and main run 38950738618 passed
+all checks before/after merge; six additional local browser stress workflows
+also passed. The earlier phone timeout remains **unexplained, not fixed**. The
+successful runs did not exercise failure-artifact upload. This limitation is
+retained in release notes rather than concealed by a retry or larger timeout.
 
 ## Explicit execution decisions
 
 - Add an optional caller-owned pre-publication eligibility hook rather than
   coupling the generic publisher to wishlist release code. Other callers must
   supply their own ordering guard; omitting it leaves their retry ordering unsafe.
-- Keep remote acceptance as real checks, not simulated success. ARM and
-  verification Actions gates are now satisfied; first-package publishing and
-  anonymous pulls remain gated. Risk: publication integration defects may still
-  appear after authorization; the release is not yet accepted.
+- Keep remote acceptance as real checks, not simulated success. Verification,
+  release Actions, both architecture smokes, anonymous pulls and downloaded
+  installation gates passed for v0.1.0. No authorization for future releases or
+  package visibility changes is inferred from this release.
 - Accept non-atomic registry alias updates as designed, with explicit partial-run
   diagnosis/repair. Risk: a registry failure can temporarily leave aliases on
   different digests; stable tags must not be blindly overwritten.

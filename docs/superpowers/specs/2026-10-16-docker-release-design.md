@@ -1,8 +1,9 @@
 # Prebuilt Docker release
 
-Date: 2026-10-16. Status: approved; native local implementation verified and reviewed.
-Native amd64 and emulated arm64 PR CI passed. First publication and anonymous
-release acceptance remain pending separate approval.
+Date: 2026-10-16. Status: approved, implemented, reviewed and released as `v0.1.0`.
+Native amd64 and QEMU arm64 release smoke passed; both images pull anonymously.
+Downloaded Compose installation, privacy, persistence and private restore passed.
+See `docs/verification/docker-release.md` for digests, evidence and limitations.
 
 ## Goal and agreed constraints
 

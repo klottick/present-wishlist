@@ -1,0 +1,24 @@
+services:
+  app:
+    image: ${WISHLIST_IMAGE:-ghcr.io/klottick/present-wishlist}:${WISHLIST_VERSION:?Set WISHLIST_VERSION}
+    restart: unless-stopped
+    stop_grace_period: 30s
+    ports:
+      - "${WISHLIST_BIND_ADDRESS:-127.0.0.1}:8000:8000"
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set a private DJANGO_SECRET_KEY in .env}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
+    volumes:
+      - type: volume
+        source: wishlist-data
+        target: /data
+      - type: bind
+        source: ./family.yaml
+        target: /config/family.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+
+volumes:
+  wishlist-data:

@@ -1,5 +1,6 @@
 .venv/
 .superpowers/
+.worktrees/
 .playwright-mcp/
 .env
 .env.*

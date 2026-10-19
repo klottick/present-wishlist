@@ -141,23 +141,16 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
       setPhase('error')
     })
     const onFocus = () => { void revalidate() }
-    const onBlur = () => {
-      beginGeneration()
-      setError(null)
-      setPhase('checking')
-    }
     const onVisibility = () => {
       if (document.visibilityState === 'visible') void revalidate()
     }
     window.addEventListener('focus', onFocus)
-    window.addEventListener('blur', onBlur)
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
       mounted.current = false
       current += 1
       readRef.current?.abort()
       window.removeEventListener('focus', onFocus)
-      window.removeEventListener('blur', onBlur)
       document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [beginGeneration, revalidate])

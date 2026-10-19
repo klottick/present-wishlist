@@ -418,15 +418,15 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     expect(profilesAfterRestart.find((profile) => profile.key === 'sam')).toEqual({ id: samId, key: 'sam', name: 'Samuel' })
     expect(profilesAfterRestart.find((profile) => profile.key === 'alex')?.id).toBe(alexId)
 
-    // A same-profile blur/focus revalidation hides authenticated content while
-    // checking, then restores the same in-progress edit draft and focus target.
+    // Blur leaves authenticated content and draft in place; focus safely
+    // revalidates the shared identity without remounting the editor.
     await giftCard(page, 'Anything notebook').getByRole('button', { name: 'Edit gift' }).click()
     const editForm = page.locator('.item-form')
     const giftName = editForm.getByLabel('Gift name')
     await giftName.fill('Focus draft preserved')
     await page.evaluate(() => window.dispatchEvent(new Event('blur')))
-    await expect(page.getByText('Checking your identity…')).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Alex’s wishlist' })).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'Alex’s wishlist' })).toBeVisible()
+    await expect(page.getByText('Checking your identity…')).toHaveCount(0)
     const focusRevalidation = page.waitForResponse((response) =>
       response.request().method() === 'GET' && response.url().endsWith('/api/session/'))
     await page.evaluate(() => window.dispatchEvent(new Event('focus')))

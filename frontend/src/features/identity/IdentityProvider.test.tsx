@@ -195,7 +195,7 @@ describe('identity lifecycle', () => {
     expect(screen.queryByDisplayValue('private to Sam')).not.toBeInTheDocument()
   })
 
-  it('hides authenticated content on blur until focus revalidates the shared session', async () => {
+  it('keeps authenticated content visible through blur and revalidates on focus', async () => {
     const focusCheck = deferred<Session>()
     api.getProfiles.mockResolvedValue([sam, alex])
     api.getSession.mockResolvedValueOnce(session(sam)).mockReturnValueOnce(focusCheck.promise)
@@ -204,11 +204,11 @@ describe('identity lifecycle', () => {
 
     await act(async () => { fireEvent.blur(window) })
 
-    expect(screen.queryByRole('heading', { name: 'Sam’s wishlist' })).not.toBeInTheDocument()
-    expect(document.querySelector('.authenticated-area')?.parentElement).toHaveAttribute('hidden')
-    await act(async () => { fireEvent.focus(window); focusCheck.resolve(session(alex)); await focusCheck.promise })
+    expect(screen.getByRole('heading', { name: 'Sam’s wishlist' })).toBeVisible()
+    expect(screen.queryByText('Checking your identity')).not.toBeInTheDocument()
+    await act(async () => { fireEvent.focus(window); focusCheck.resolve(session(sam)); await focusCheck.promise })
 
-    expect(await screen.findByRole('heading', { name: 'Alex’s wishlist' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Sam’s wishlist' })).toBeVisible()
   })
 
   it('keeps old identity content hidden and offers retry after selection failure', async () => {

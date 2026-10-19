@@ -10,7 +10,9 @@ commands and UI task) taken on 2026-10-19. They are not captures of the older pu
 | `wishlist-buyer-desktop.png` | 1280×1000 | Sam browsing Alex's list with synthetic purchase marks and buyer controls. |
 | `wishlist-mobile.png` | 390×844 | Alex's list on mobile, including the occasion filter; no horizontal overflow. |
 
-Images capture the full page, so their stored height may exceed the viewport.
+Desktop images were captured at their viewport dimensions; the mobile image is
+a viewport capture at exactly 390×844 (it does not show the full list below the
+fold).
 Names, gifts, prices and links are synthetic; external links use `example.com`.
 The current source's `seed_demo` command populated a temporary YAML-configured
 SQLite database. Only isolated loopback ports, temporary database/config files,

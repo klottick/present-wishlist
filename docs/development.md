@@ -105,8 +105,11 @@ root:
 ```
 
 In a locally built source image, run `docker compose exec app python backend/manage.py seed_demo`
-or `docker compose exec app python backend/manage.py reset_demo --yes`. These
-commands are not available in the published `0.1.0` image. Seeding only uses
+or `docker compose exec app python backend/manage.py reset_demo --yes`. To select
+that image safely, use a separate temporary Compose project as shown below; do
+not switch an existing family installation to a development image or run demo
+reset against its database. These commands are not available in the published
+`0.1.0` image. Seeding only uses
 active profiles and events already present from configured YAML; it never creates
 or changes identities/events. Demo items carry an internal ownership marker, so
 reseed keeps edited examples and their marks intact. Reset requires `--yes` and
@@ -114,6 +117,77 @@ deletes only marked demo items; purchase marks and edits on those examples go wi
 them. Unmarked wishlist gifts and configuration are never reset. These commands
 target whichever database the app is configured to use: do not run them against a
 shared, production, or real-family database.
+
+#### Verify commands in an isolated local Docker project
+
+This optional smoke procedure builds the current source under a local-only image
+tag, then creates a disposable Compose project, YAML configuration and named
+database volume. It does not read or overwrite the repository's `.env` or
+`family.yaml`. It requires Docker Compose v2.24.4 or newer for the `!override`
+port syntax.
+
+From the repository root, create private scratch configuration and a unique
+project name:
+
+```sh
+work="$(mktemp -d /tmp/opencode/wishlist-local-image.XXXXXX)"
+project="wishlist-local-image-$(date +%s)-$$"
+cp compose.yaml "$work/compose.yaml"
+cat > "$work/family.yaml" <<'YAML'
+members:
+  alex: Alex
+  sam: Sam
+  robin: Robin
+events:
+  birthday: Birthday
+  christmas: Christmas
+YAML
+cat > "$work/.env" <<EOF
+WISHLIST_IMAGE=present-wishlist-local
+WISHLIST_VERSION=source-test
+DJANGO_SECRET_KEY=$(openssl rand -hex 32)
+EOF
+chmod 600 "$work/.env"
+cat > "$work/compose.override.yaml" <<'YAML'
+services:
+  app:
+    ports: !override
+      - "127.0.0.1::8000"
+YAML
+docker buildx build --platform linux/amd64 --load \
+  --tag present-wishlist-local:source-test \
+  --build-arg VCS_REF="$(git rev-parse HEAD)" \
+  --build-arg VERSION=source-test .
+```
+
+Use the same `-p`, `--env-file`, and `-f` arguments for every Compose command;
+the unique project name scopes its network and named database volume, while the
+port override asks Docker for an available loopback port:
+
+```sh
+compose=(docker compose -p "$project" --env-file "$work/.env"
+  -f "$work/compose.yaml" -f "$work/compose.override.yaml")
+"${compose[@]}" config --quiet
+"${compose[@]}" up -d --wait
+"${compose[@]}" ps
+"${compose[@]}" port app 8000
+"${compose[@]}" exec app python backend/manage.py seed_demo
+"${compose[@]}" exec app python backend/manage.py seed_demo
+"${compose[@]}" exec app python backend/manage.py reset_demo
+```
+
+The last command must refuse without `--yes`. Verify reset behavior only in this
+disposable database: create an ordinary gift there, run
+`"${compose[@]}" exec app python backend/manage.py reset_demo --yes`, and confirm
+only marked demo gifts and their purchase marks were removed while the ordinary
+gift remains. Keep this app/config/database isolated; never use these reset steps
+on family data. Once finished, inspect the project name and Compose ownership,
+then remove only this test project's containers/network/volume with
+`"${compose[@]}" down --volumes` and remove its temporary directory. Do not use
+global Docker prune commands.
+
+See [local Docker demo-command verification](verification/local-source-demo-commands.md)
+for a recorded run of this procedure and the native container smoke test.
 
 ## Verification
 

@@ -479,6 +479,7 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     await pendingSessionObserved
     await expect(page.getByText('Checking your identity…')).toBeVisible()
     await expect(dialog).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'Alex’s wishlist' })).toBeVisible()
     await waitForRenderedFrames(page)
     expect(await page.evaluate(() => document.querySelector('[inert]') !== null), 'an inert authenticated subtree is rendered while both requests are pending').toBe(true)
     releasePendingSession()

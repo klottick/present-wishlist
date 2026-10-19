@@ -206,7 +206,12 @@ describe('identity lifecycle', () => {
 
     expect(screen.getByRole('heading', { name: 'Sam’s wishlist' })).toBeVisible()
     expect(screen.queryByText('Checking your identity')).not.toBeInTheDocument()
-    await act(async () => { fireEvent.focus(window); focusCheck.resolve(session(sam)); await focusCheck.promise })
+    await act(async () => { fireEvent.focus(window) })
+    expect(screen.getByRole('heading', { name: 'Sam’s wishlist' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Sam’s wishlist' }).closest('.authenticated-area')?.parentElement)
+      .toHaveAttribute('inert')
+    expect(screen.getByText('Checking your identity…')).toBeVisible()
+    await act(async () => { focusCheck.resolve(session(sam)); await focusCheck.promise })
 
     expect(await screen.findByRole('heading', { name: 'Sam’s wishlist' })).toBeVisible()
   })

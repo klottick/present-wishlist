@@ -128,6 +128,7 @@ code { padding: .15rem .3rem; border-radius: .25rem; background: #f0f3ef; }
   padding: 1rem;
   background: #16251dcc;
 }
+.dialog-backdrop[hidden] { display: none; }
 .confirmation-dialog {
   width: min(100%, 30rem);
   padding: clamp(1.25rem, 5vw, 2rem);

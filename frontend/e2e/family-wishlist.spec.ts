@@ -46,25 +46,36 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     const add = async (name: string, event?: string, multiple = false) => {
       await page.getByRole('button', { name: 'Add a gift' }).click()
       const form = page.locator('.item-form')
+      await expect(form.getByRole('checkbox', { name: 'Can be purchased multiple times' })).not.toBeChecked()
+      await expect(form.getByLabel(/price/i)).toHaveCount(0)
+      const geometry = await page.evaluate(() => {
+        const form = document.querySelector('.item-form')!.getBoundingClientRect()
+        const main = document.querySelector('main.page-shell')!.getBoundingClientRect()
+        return { viewport: innerWidth, scrollWidth: document.documentElement.scrollWidth,
+          mainLeft: main.left, mainWidth: main.width, formLeft: form.left, formWidth: form.width }
+      })
+      expect(geometry.scrollWidth, `horizontal overflow: ${JSON.stringify(geometry)}`).toBeLessThanOrEqual(geometry.viewport)
+      expect(Math.abs((geometry.formLeft + geometry.formWidth / 2) - (geometry.mainLeft + geometry.mainWidth / 2)),
+        `form must be centered in main content: ${JSON.stringify(geometry)}`).toBeLessThanOrEqual(1)
       await form.getByLabel('Gift name').fill(name)
-      if (event) await form.getByLabel('Event').selectOption({ label: event })
-      if (multiple) await form.getByLabel('Allow multiple purchases').check()
+      if (event) await form.getByLabel(/occasion/i).selectOption({ label: event })
+      if (multiple) await form.getByLabel('Can be purchased multiple times').check()
+      const createRequest = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/api/items/'))
       await form.getByRole('button', { name: 'Save gift' }).click()
+      const payload = JSON.parse((await createRequest).postData() ?? '{}') as Record<string, unknown>
+      expect(payload.name).toBe(name)
+      expect(payload).not.toHaveProperty('price')
       await expect(page.getByRole('heading', { name })).toBeVisible()
+      await expect(giftCard(page, name).getByText(/\$\d/)).toHaveCount(0)
     }
     await add('Anything notebook')
     await add('Birthday picnic', 'Birthday')
     await add('Christmas board game', 'Christmas', true)
     await add('Keyboard delete target')
-    await giftCard(page, 'Birthday picnic').getByRole('button', { name: 'Edit gift' }).click()
-    await page.getByLabel('Gift name').fill('Birthday outing')
-    await page.getByRole('button', { name: 'Save gift' }).click()
-    await expect(page.getByRole('heading', { name: 'Birthday outing' })).toBeVisible()
-
     const birthdayFilter = page.getByLabel('Filter by occasion')
     await birthdayFilter.selectOption({ label: 'Birthday' })
     await expect(page.getByRole('heading', { name: 'Anything notebook' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Birthday outing' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Birthday picnic' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Christmas board game' })).toHaveCount(0)
 
     const profilesResponse = await page.request.get(`${info.url}/api/profiles/`)
@@ -80,7 +91,7 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
       expect(item).not.toHaveProperty('can_purchase')
       expect(item).not.toHaveProperty('can_undo')
     }
-    const birthday = ownerItems.find((item) => item.name === 'Birthday outing')!
+    const birthday = ownerItems.find((item) => item.name === 'Birthday picnic')!
     const multi = ownerItems.find((item) => item.name === 'Christmas board game')!
     expect(birthday).toBeTruthy()
     expect(multi).toBeTruthy()
@@ -88,6 +99,23 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     const birthdayEventId = (birthday.event as { id: number }).id
     const multiId = multi.id as number
     const christmasEventId = (multi.event as { id: number }).id
+    const csrfToken = (await context.cookies(info.url)).find((cookie) => cookie.name === 'csrftoken')?.value
+    expect(csrfToken).toBeTruthy()
+    const legacyPriceResponse = await page.request.patch(`${info.url}/api/items/${birthdayId}/`, {
+      headers: { 'X-CSRFToken': csrfToken! },
+      data: { price: '€42.50' },
+    })
+    expect(legacyPriceResponse.ok()).toBeTruthy()
+    await giftCard(page, 'Birthday picnic').getByRole('button', { name: 'Edit gift' }).click()
+    await expect(page.locator('.item-form').getByLabel(/price/i)).toHaveCount(0)
+    await page.getByLabel('Gift name').fill('Birthday outing')
+    await page.getByRole('button', { name: 'Save gift' }).click()
+    await expect(page.getByRole('heading', { name: 'Birthday outing' })).toBeVisible()
+    await expect(giftCard(page, 'Birthday outing').getByText('€42.50', { exact: true })).toHaveCount(0)
+    const legacyPriceAfterEdit = await page.request.get(`${info.url}/api/profiles/${alexId}/items/`)
+    const editedBirthday = (await legacyPriceAfterEdit.json() as Array<Record<string, unknown>>)
+      .find((item) => item.id === birthdayId)
+    expect(editedBirthday?.price).toBe('€42.50')
 
     secondContext = await browser.newContext({ viewport: testInfo.project.use.viewport })
     const sam = await secondContext.newPage()
@@ -376,7 +404,7 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     await expect(page.getByRole('heading', { name: 'Birthday outing' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Christmas board game' })).toBeVisible()
     await expect(birthdayForm.getByLabel('Notes')).toHaveValue('Keep notes after catalog removal')
-    await expect(birthdayForm.getByLabel('Event')).toHaveValue(String(birthdayEventId))
+    await expect(birthdayForm.getByLabel(/occasion/i)).toHaveValue(String(birthdayEventId))
     await expect(birthdayForm.getByRole('option', { name: 'Birthday (no longer configured; retained)' })).toHaveCount(1)
     await expect.poll(() => wishlistRequestsAfterRestart.some((url) => {
       const query = new URL(url).searchParams
@@ -418,15 +446,15 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     expect(profilesAfterRestart.find((profile) => profile.key === 'sam')).toEqual({ id: samId, key: 'sam', name: 'Samuel' })
     expect(profilesAfterRestart.find((profile) => profile.key === 'alex')?.id).toBe(alexId)
 
-    // A same-profile blur/focus revalidation hides authenticated content while
-    // checking, then restores the same in-progress edit draft and focus target.
+    // Blur leaves authenticated content and draft in place; focus safely
+    // revalidates the shared identity without remounting the editor.
     await giftCard(page, 'Anything notebook').getByRole('button', { name: 'Edit gift' }).click()
     const editForm = page.locator('.item-form')
     const giftName = editForm.getByLabel('Gift name')
     await giftName.fill('Focus draft preserved')
     await page.evaluate(() => window.dispatchEvent(new Event('blur')))
-    await expect(page.getByText('Checking your identity…')).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Alex’s wishlist' })).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'Alex’s wishlist' })).toBeVisible()
+    await expect(page.getByText('Checking your identity…')).toHaveCount(0)
     const focusRevalidation = page.waitForResponse((response) =>
       response.request().method() === 'GET' && response.url().endsWith('/api/session/'))
     await page.evaluate(() => window.dispatchEvent(new Event('focus')))
@@ -479,6 +507,7 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     await pendingSessionObserved
     await expect(page.getByText('Checking your identity…')).toBeVisible()
     await expect(dialog).toBeHidden()
+    await expect(page.locator('.authenticated-area [data-wishlist-heading]')).toBeVisible()
     await waitForRenderedFrames(page)
     expect(await page.evaluate(() => document.querySelector('[inert]') !== null), 'an inert authenticated subtree is rendered while both requests are pending').toBe(true)
     releasePendingSession()

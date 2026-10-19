@@ -57,10 +57,11 @@ function IdentityGate() {
   if (profile) {
     return (
       <>
-        <div hidden={checking} inert={checking}>
+        <div inert={phase !== 'ready'}>
           <AuthenticatedArea profile={profile} profiles={profiles} onSwitch={() => void clear()} />
         </div>
-        {checking && <main className="page-shell"><p role="status">{phase === 'loading' ? 'Loading…' : 'Checking your identity…'}</p></main>}
+        {phase === 'loading' && <main className="page-shell"><p role="status">Loading…</p></main>}
+        {phase === 'checking' && <p className="identity-check-status" role="status">Checking your identity…</p>}
       </>
     )
   }

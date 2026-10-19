@@ -25,7 +25,7 @@ export type Item = OwnerItem | OtherItem
 export type ItemInput = {
   name: string
   link: string
-  price: string
+  price?: string
   notes: string
   event_id: number | null
   allow_multiple_purchases: boolean

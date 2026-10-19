@@ -41,6 +41,11 @@ function DialogHarness({ onCancel }: { onCancel: () => void }) {
     {open && <DeleteItemDialog item={item} onDeleted={() => setOpen(false)} onCancel={() => { setOpen(false); onCancel() }} />}</>
 }
 
+function RevalidationHarness() {
+  const { revalidate } = useIdentity()
+  return <button type="button" onClick={() => void revalidate()}>Revalidate</button>
+}
+
 function IdentityVisibilityBoundary({ children }: { children: ReactNode }) {
   const { phase } = useIdentity()
   const checking = phase === 'checking' || phase === 'changing'
@@ -132,5 +137,25 @@ describe('DeleteItemDialog', () => {
     const dialog = await screen.findByRole('dialog')
     expect(dialog).toBeVisible()
     await waitFor(() => expect(dialog).toHaveFocus())
+  })
+
+  it('visually conceals a pending delete confirmation during identity revalidation and restores it afterward', async () => {
+    const check = deferred<{ profile: typeof profile }>()
+    api.getProfiles.mockResolvedValue([profile])
+    api.getSession.mockResolvedValueOnce({ profile }).mockReturnValueOnce(check.promise)
+    render(<IdentityProvider><RevalidationHarness />
+      <DeleteItemDialog item={item} onDeleted={vi.fn()} onCancel={vi.fn()} />
+    </IdentityProvider>)
+    const user = userEvent.setup()
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveTextContent('Travel mug')
+
+    await user.click(screen.getByRole('button', { name: 'Revalidate' }))
+
+    expect(dialog).not.toBeVisible()
+    expect(dialog).toHaveTextContent('Travel mug')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await act(async () => { check.resolve({ profile }); await check.promise })
+    expect(await screen.findByRole('dialog')).toBeVisible()
   })
 })

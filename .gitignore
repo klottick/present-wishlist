@@ -1,5 +1,6 @@
 .venv/
 .superpowers/
+.worktrees/
 .playwright-mcp/
 .env
 .env.*
@@ -17,3 +18,10 @@ frontend/coverage/
 frontend/.vite/
 frontend/playwright-report/
 frontend/test-results/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
+*.gate.lock*

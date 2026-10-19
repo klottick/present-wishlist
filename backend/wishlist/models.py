@@ -29,6 +29,7 @@ class Event(models.Model):
 
 
 class WishlistItem(models.Model):
+    demo_key = models.CharField(max_length=80, unique=True, null=True, blank=True, editable=False)
     owner = models.ForeignKey(
         FamilyProfile, on_delete=models.PROTECT, related_name="items"
     )

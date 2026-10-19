@@ -11,7 +11,7 @@ to the internet or untrusted users; accounts and TLS are not included.
 ## Features
 
 - Choose a family member's name without creating an account.
-- Add, edit and remove gifts with an optional link, price and notes.
+- Add, edit and remove gifts; only the name is required, with optional links and notes.
 - Organize gifts by configurable occasions or leave them as Anything.
 - Coordinate purchases on other family members' lists; purchase details are
   omitted from the recipient's API responses and interface.
@@ -22,7 +22,9 @@ to the internet or untrusted users; accounts and TLS are not included.
 
 ## Screenshots
 
-The screenshots show the released application with fictional names and gift data.
+The screenshots show the interface included in `0.1.1`, captured from source
+using fictional names and gift data; see the
+[screenshot provenance](docs/images/README.md).
 
 ### Your wishlist
 
@@ -43,11 +45,15 @@ Other family members can see purchase marks and coordinate their own purchases.
 
 ## Quick start
 
+Version `0.1.1` includes the updated interface and safe demo-data commands.
+For source-based development, follow
+[development setup](docs/development.md#run-the-application).
+
 Install Docker Engine with Compose, or Docker Desktop in **Linux-container mode**.
 Images support Linux `amd64` and `arm64`; ARM requires a 64-bit OS. Python, Node.js
 and a source checkout are not required. Windows and macOS use Docker's Linux VM.
 
-1. Open the [v0.1.0 release](https://github.com/klottick/present-wishlist/releases/tag/v0.1.0)
+1. Open the [v0.1.1 release](https://github.com/klottick/present-wishlist/releases/tag/v0.1.1)
    and download its attached `compose.yaml`, `family.example.yaml` and
    `default.env.example` into a new directory. Use these assets, not the source
    archives. GitHub renames the uploaded `.env.example` to `default.env.example`.
@@ -101,9 +107,9 @@ for validation rules, removing/reactivating entries and development paths.
    **Family wishlists** to browse someone else's list.
 2. Assign a gift to one occasion or leave it as **Anything**. An occasion filter
    includes Anything gifts; the Anything-only filter shows only unassigned gifts.
-3. Mark someone else's gift purchased. Ordinary gifts allow one buyer; gifts
-   with **Allow multiple purchases** allow one mark per different buyer. There is
-   no quantity field. Buyers can undo only their own marks.
+3. Mark someone else's gift purchased. Ordinary gifts allow one buyer; check
+   **Can be purchased multiple times** to allow one mark per different buyer.
+   There is no quantity field. Buyers can undo only their own marks.
 4. Use the refresh control to see changes from other people. Live push updates
    are not provided.
 
@@ -129,7 +135,7 @@ environment settings, backup/restore, exact-version updates and troubleshooting.
 ## Development and documentation
 
 - [Development and testing](docs/development.md): Python/Node setup, local servers
-  and `bash scripts/verify.sh`.
+  and `bash scripts/verify.sh`, including safe demo-data commands.
 - [Releases and publisher reuse](docs/releases.md): multi-platform GHCR publication,
   recovery and adapting the reusable workflow to another stack.
 - [Documentation index](docs/README.md): all guides, design records and historical

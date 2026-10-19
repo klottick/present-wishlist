@@ -32,12 +32,12 @@ describe('ItemForm', () => {
   it('defaults new items to Anything and single purchase, with required bounded name', () => {
     renderForm({ events: [birthday], onSaved: vi.fn(), onCancel: vi.fn() })
 
-    expect(screen.getByRole('combobox', { name: /event/i })).toHaveDisplayValue('Anything')
-    expect(screen.getByRole('checkbox', { name: /allow multiple purchases/i })).not.toBeChecked()
+    expect(screen.getByRole('combobox', { name: /occasion/i })).toHaveDisplayValue('Anything')
+    expect(screen.getByRole('checkbox', { name: 'Can be purchased multiple times' })).not.toBeChecked()
     expect(screen.getByRole('textbox', { name: /gift name/i })).toHaveAttribute('maxlength', '200')
     expect(screen.getByRole('textbox', { name: /gift name/i })).toBeRequired()
     expect(screen.getByRole('textbox', { name: /link/i })).toHaveAttribute('maxlength', '2000')
-    expect(screen.getByRole('textbox', { name: /price/i })).toHaveAttribute('maxlength', '80')
+    expect(screen.queryByLabelText(/price/i)).not.toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: /notes/i })).toHaveAttribute('maxlength', '5000')
   })
 
@@ -49,19 +49,17 @@ describe('ItemForm', () => {
     const user = userEvent.setup()
     await user.type(screen.getByRole('textbox', { name: /gift name/i }), 'A book')
     await user.type(screen.getByRole('textbox', { name: /link/i }), 'https://example.com/book')
-    await user.type(screen.getByRole('textbox', { name: /price/i }), '$12')
     await user.type(screen.getByRole('textbox', { name: /notes/i }), 'For the train')
-    await user.selectOptions(screen.getByRole('combobox', { name: /event/i }), '1')
-    await user.click(screen.getByRole('checkbox', { name: /allow multiple purchases/i }))
+    await user.selectOptions(screen.getByRole('combobox', { name: /occasion/i }), '1')
+    await user.click(screen.getByRole('checkbox', { name: 'Can be purchased multiple times' }))
     await user.click(screen.getByRole('button', { name: /save/i }))
 
     expect(await screen.findByText('A gift with this name is not allowed.')).toBeVisible()
     expect(screen.getByRole('textbox', { name: /gift name/i })).toHaveValue('A book')
     expect(screen.getByRole('textbox', { name: /link/i })).toHaveValue('https://example.com/book')
-    expect(screen.getByRole('textbox', { name: /price/i })).toHaveValue('$12')
     expect(screen.getByRole('textbox', { name: /notes/i })).toHaveValue('For the train')
-    expect(screen.getByRole('combobox', { name: /event/i })).toHaveValue('1')
-    expect(screen.getByRole('checkbox', { name: /allow multiple purchases/i })).toBeChecked()
+    expect(screen.getByRole('combobox', { name: /occasion/i })).toHaveValue('1')
+    expect(screen.getByRole('checkbox', { name: 'Can be purchased multiple times' })).toBeChecked()
   })
 
   it('associates every field error exactly once and combines event errors without duplicate IDs', async () => {
@@ -79,17 +77,15 @@ describe('ItemForm', () => {
     const form = screen.getByRole('form', { name: 'Add a gift' })
     const user = userEvent.setup()
     await user.type(within(form).getByRole('textbox', { name: /gift name/i }), 'Book')
-    await user.selectOptions(within(form).getByRole('combobox', { name: 'Event' }), '1')
+    await user.selectOptions(within(form).getByRole('combobox', { name: /occasion/i }), '1')
     await user.click(within(form).getByRole('button', { name: 'Save gift' }))
     await screen.findByText(/Purchase issue two\./)
 
     const controls = [
       [within(form).getByRole('textbox', { name: /gift name/i }), ['Name issue one.', 'Name issue two.']],
-      [within(form).getByRole('textbox', { name: 'Link' }), ['Link issue one.', 'Link issue two.']],
-      [within(form).getByRole('textbox', { name: 'Price' }), ['Price issue one.', 'Price issue two.']],
-      [within(form).getByRole('textbox', { name: 'Notes' }), ['Notes issue one.', 'Notes issue two.']],
-      [within(form).getByRole('combobox', { name: 'Event' }), ['Event issue one.', 'Event issue two.']],
-      [within(form).getByRole('checkbox', { name: 'Allow multiple purchases' }), ['Purchase issue one.', 'Purchase issue two.']],
+      [within(form).getByRole('textbox', { name: /Notes/i }), ['Notes issue one.', 'Notes issue two.']],
+      [within(form).getByRole('combobox', { name: /occasion/i }), ['Event issue one.', 'Event issue two.']],
+      [within(form).getByRole('checkbox', { name: 'Can be purchased multiple times' }), ['Purchase issue one.', 'Purchase issue two.']],
     ] as const
     const describedIds: string[] = []
     for (const [control, messages] of controls) {
@@ -106,7 +102,7 @@ describe('ItemForm', () => {
     expect(new Set(describedIds).size).toBe(describedIds.length)
 
     view.rerender(<StrictMode><IdentityProvider><ItemForm events={[]} onSaved={vi.fn()} onCancel={vi.fn()} /></IdentityProvider></StrictMode>)
-    const eventControl = screen.getByRole('combobox', { name: 'Event' })
+    const eventControl = screen.getByRole('combobox', { name: /occasion/i })
     expect(eventControl).toHaveAttribute('aria-invalid', 'true')
     const eventDescription = (eventControl.getAttribute('aria-describedby') ?? '').split(/\s+/)
       .map((id) => document.getElementById(id)?.textContent ?? '').join(' ')
@@ -121,7 +117,6 @@ describe('ItemForm', () => {
     expect(nameControl).not.toHaveAttribute('aria-invalid')
     expect(nameControl).not.toHaveAttribute('aria-describedby')
     expect(screen.queryByText(/Name issue one\./)).not.toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'Link' })).toHaveAccessibleDescription('Link issue one. Link issue two.')
     expect(eventControl).toHaveAttribute('aria-invalid', 'true')
 
     await user.selectOptions(eventControl, '')
@@ -130,7 +125,7 @@ describe('ItemForm', () => {
     expect(screen.queryByText(/This occasion is no longer configured\./)).not.toBeInTheDocument()
     expect(screen.queryByText(/Event issue one\./)).not.toBeInTheDocument()
 
-    const purchaseControl = screen.getByRole('checkbox', { name: 'Allow multiple purchases' })
+    const purchaseControl = screen.getByRole('checkbox', { name: 'Can be purchased multiple times' })
     await user.click(purchaseControl)
     expect(purchaseControl).not.toHaveAttribute('aria-invalid')
     expect(purchaseControl).not.toHaveAttribute('aria-describedby')
@@ -147,7 +142,7 @@ describe('ItemForm', () => {
     await user.click(screen.getByRole('button', { name: /save/i }))
 
     expect(api.updateItem).toHaveBeenCalledWith(4, {
-      name: 'New name', link: '', price: '', notes: '', event_id: 3, allow_multiple_purchases: false,
+      name: 'New name', link: '', notes: '', event_id: 3, allow_multiple_purchases: false,
     })
     expect(onSaved).toHaveBeenCalledOnce()
   })
@@ -164,12 +159,12 @@ describe('ItemForm', () => {
     view.rerender(<StrictMode><IdentityProvider><ItemForm item={birthdayItem} events={[]} onSaved={onSaved} onCancel={vi.fn()} /></IdentityProvider></StrictMode>)
 
     expect(screen.getByRole('textbox', { name: /notes/i })).toHaveValue('Keep these notes')
-    expect(screen.getByRole('combobox', { name: 'Event' })).toHaveValue('1')
+    expect(screen.getByRole('combobox', { name: /occasion/i })).toHaveValue('1')
     expect(screen.getByRole('option', { name: 'Birthday (no longer configured; retained)' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /save/i }))
 
     expect(api.updateItem).toHaveBeenCalledWith(4, {
-      name: 'Old gift', link: '', price: '', notes: 'Keep these notes', event_id: 1, allow_multiple_purchases: false,
+      name: 'Old gift', link: '', notes: 'Keep these notes', event_id: 1, allow_multiple_purchases: false,
     })
     expect(onSaved).toHaveBeenCalledOnce()
   })
@@ -179,7 +174,7 @@ describe('ItemForm', () => {
     const view = renderForm({ events: [birthday], onSaved, onCancel: vi.fn() })
     await userEvent.type(screen.getByRole('textbox', { name: /gift name/i }), 'Keep this gift')
     await userEvent.type(screen.getByRole('textbox', { name: /notes/i }), 'Keep these notes')
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Event' }), '1')
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /occasion/i }), '1')
 
     view.rerender(<StrictMode><IdentityProvider><ItemForm events={[]} onSaved={onSaved} onCancel={vi.fn()} /></IdentityProvider></StrictMode>)
 
@@ -188,12 +183,12 @@ describe('ItemForm', () => {
     expect(screen.getByText(/no longer configured.*choose anything or another current occasion/i)).toBeVisible()
     expect(screen.getByRole('button', { name: /save/i })).toBeDisabled()
 
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Event' }), '')
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /occasion/i }), '')
     expect(screen.getByRole('button', { name: /save/i })).toBeEnabled()
     await userEvent.click(screen.getByRole('button', { name: /save/i }))
 
     expect(api.createItem).toHaveBeenCalledWith({
-      name: 'Keep this gift', link: '', price: '', notes: 'Keep these notes', event_id: null, allow_multiple_purchases: false,
+      name: 'Keep this gift', link: '', notes: 'Keep these notes', event_id: null, allow_multiple_purchases: false,
     })
     expect(onSaved).toHaveBeenCalledOnce()
   })

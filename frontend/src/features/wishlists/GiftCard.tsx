@@ -11,7 +11,6 @@ export function GiftCard({ item, children }: { item: Item; children?: ReactNode 
           {item.event?.label ?? 'Anything'}{item.event && !item.event.is_active && <span className="archived-label"> (no longer configured)</span>}
         </span>
       </div>
-      {item.price && <p className="gift-price">{item.price}</p>}
       {item.notes && <p className="gift-notes">{item.notes}</p>}
       {item.allow_multiple_purchases && <p className="gift-repeatability">This gift can be purchased by more than one person.</p>}
       {safeLink && <p><a href={safeLink} target="_blank" rel="noopener noreferrer">View gift link</a></p>}

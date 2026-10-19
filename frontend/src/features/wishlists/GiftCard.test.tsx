@@ -4,6 +4,11 @@ import { ownerItemFixture } from '../../test/fixtures'
 import { GiftCard } from './GiftCard'
 
 describe('GiftCard', () => {
+  it('does not display the stored price', () => {
+    render(<GiftCard item={{ ...ownerItemFixture, price: '$25' }} />)
+    expect(screen.queryByText('$25')).not.toBeInTheDocument()
+  })
+
   it('opens only HTTP(S) gift links safely in a new tab', () => {
     const { rerender } = render(<GiftCard item={{ ...ownerItemFixture, link: 'https://shop.example/gift' }} />)
     const link = screen.getByRole('link', { name: 'View gift link' })

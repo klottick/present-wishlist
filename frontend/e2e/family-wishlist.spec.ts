@@ -46,11 +46,27 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     const add = async (name: string, event?: string, multiple = false) => {
       await page.getByRole('button', { name: 'Add a gift' }).click()
       const form = page.locator('.item-form')
+      await expect(form.getByRole('checkbox', { name: 'Can be purchased multiple times.' })).not.toBeChecked()
+      await expect(form.getByLabel(/price/i)).toHaveCount(0)
+      const geometry = await page.evaluate(() => {
+        const form = document.querySelector('.item-form')!.getBoundingClientRect()
+        const main = document.querySelector('main.page-shell')!.getBoundingClientRect()
+        return { viewport: innerWidth, scrollWidth: document.documentElement.scrollWidth,
+          mainLeft: main.left, mainWidth: main.width, formLeft: form.left, formWidth: form.width }
+      })
+      expect(geometry.scrollWidth, `horizontal overflow: ${JSON.stringify(geometry)}`).toBeLessThanOrEqual(geometry.viewport)
+      expect(Math.abs((geometry.formLeft + geometry.formWidth / 2) - (geometry.mainLeft + geometry.mainWidth / 2)),
+        `form must be centered in main content: ${JSON.stringify(geometry)}`).toBeLessThanOrEqual(1)
       await form.getByLabel('Gift name').fill(name)
-      if (event) await form.getByLabel('Event').selectOption({ label: event })
-      if (multiple) await form.getByLabel('Allow multiple purchases').check()
+      if (event) await form.getByLabel(/occasion/i).selectOption({ label: event })
+      if (multiple) await form.getByLabel('Can be purchased multiple times.').check()
+      const createRequest = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/api/items/'))
       await form.getByRole('button', { name: 'Save gift' }).click()
+      const payload = JSON.parse((await createRequest).postData() ?? '{}') as Record<string, unknown>
+      expect(payload.name).toBe(name)
+      expect(payload).not.toHaveProperty('price')
       await expect(page.getByRole('heading', { name })).toBeVisible()
+      await expect(giftCard(page, name).getByText(/\$\d/)).toHaveCount(0)
     }
     await add('Anything notebook')
     await add('Birthday picnic', 'Birthday')
@@ -376,7 +392,7 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     await expect(page.getByRole('heading', { name: 'Birthday outing' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Christmas board game' })).toBeVisible()
     await expect(birthdayForm.getByLabel('Notes')).toHaveValue('Keep notes after catalog removal')
-    await expect(birthdayForm.getByLabel('Event')).toHaveValue(String(birthdayEventId))
+    await expect(birthdayForm.getByLabel(/occasion/i)).toHaveValue(String(birthdayEventId))
     await expect(birthdayForm.getByRole('option', { name: 'Birthday (no longer configured; retained)' })).toHaveCount(1)
     await expect.poll(() => wishlistRequestsAfterRestart.some((url) => {
       const query = new URL(url).searchParams

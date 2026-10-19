@@ -46,7 +46,7 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     const add = async (name: string, event?: string, multiple = false) => {
       await page.getByRole('button', { name: 'Add a gift' }).click()
       const form = page.locator('.item-form')
-      await expect(form.getByRole('checkbox', { name: 'Can be purchased multiple times.' })).not.toBeChecked()
+      await expect(form.getByRole('checkbox', { name: 'Can be purchased multiple times' })).not.toBeChecked()
       await expect(form.getByLabel(/price/i)).toHaveCount(0)
       const geometry = await page.evaluate(() => {
         const form = document.querySelector('.item-form')!.getBoundingClientRect()
@@ -59,7 +59,7 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
         `form must be centered in main content: ${JSON.stringify(geometry)}`).toBeLessThanOrEqual(1)
       await form.getByLabel('Gift name').fill(name)
       if (event) await form.getByLabel(/occasion/i).selectOption({ label: event })
-      if (multiple) await form.getByLabel('Can be purchased multiple times.').check()
+      if (multiple) await form.getByLabel('Can be purchased multiple times').check()
       const createRequest = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/api/items/'))
       await form.getByRole('button', { name: 'Save gift' }).click()
       const payload = JSON.parse((await createRequest).postData() ?? '{}') as Record<string, unknown>
@@ -72,15 +72,10 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     await add('Birthday picnic', 'Birthday')
     await add('Christmas board game', 'Christmas', true)
     await add('Keyboard delete target')
-    await giftCard(page, 'Birthday picnic').getByRole('button', { name: 'Edit gift' }).click()
-    await page.getByLabel('Gift name').fill('Birthday outing')
-    await page.getByRole('button', { name: 'Save gift' }).click()
-    await expect(page.getByRole('heading', { name: 'Birthday outing' })).toBeVisible()
-
     const birthdayFilter = page.getByLabel('Filter by occasion')
     await birthdayFilter.selectOption({ label: 'Birthday' })
     await expect(page.getByRole('heading', { name: 'Anything notebook' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Birthday outing' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Birthday picnic' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Christmas board game' })).toHaveCount(0)
 
     const profilesResponse = await page.request.get(`${info.url}/api/profiles/`)
@@ -96,7 +91,7 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
       expect(item).not.toHaveProperty('can_purchase')
       expect(item).not.toHaveProperty('can_undo')
     }
-    const birthday = ownerItems.find((item) => item.name === 'Birthday outing')!
+    const birthday = ownerItems.find((item) => item.name === 'Birthday picnic')!
     const multi = ownerItems.find((item) => item.name === 'Christmas board game')!
     expect(birthday).toBeTruthy()
     expect(multi).toBeTruthy()
@@ -104,6 +99,23 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     const birthdayEventId = (birthday.event as { id: number }).id
     const multiId = multi.id as number
     const christmasEventId = (multi.event as { id: number }).id
+    const csrfToken = (await context.cookies(info.url)).find((cookie) => cookie.name === 'csrftoken')?.value
+    expect(csrfToken).toBeTruthy()
+    const legacyPriceResponse = await page.request.patch(`${info.url}/api/items/${birthdayId}/`, {
+      headers: { 'X-CSRFToken': csrfToken! },
+      data: { price: '€42.50' },
+    })
+    expect(legacyPriceResponse.ok()).toBeTruthy()
+    await giftCard(page, 'Birthday picnic').getByRole('button', { name: 'Edit gift' }).click()
+    await expect(page.locator('.item-form').getByLabel(/price/i)).toHaveCount(0)
+    await page.getByLabel('Gift name').fill('Birthday outing')
+    await page.getByRole('button', { name: 'Save gift' }).click()
+    await expect(page.getByRole('heading', { name: 'Birthday outing' })).toBeVisible()
+    await expect(giftCard(page, 'Birthday outing').getByText('€42.50', { exact: true })).toHaveCount(0)
+    const legacyPriceAfterEdit = await page.request.get(`${info.url}/api/profiles/${alexId}/items/`)
+    const editedBirthday = (await legacyPriceAfterEdit.json() as Array<Record<string, unknown>>)
+      .find((item) => item.id === birthdayId)
+    expect(editedBirthday?.price).toBe('€42.50')
 
     secondContext = await browser.newContext({ viewport: testInfo.project.use.viewport })
     const sam = await secondContext.newPage()

@@ -111,7 +111,7 @@ export function ItemForm({ item, events, eventsReady = true, onSaved, onCancel }
         This occasion is no longer configured. Choose Anything or another current occasion before saving.
       </p>}
       {fieldErrorGroup('event_id', fieldErrors.event_id ?? [])}
-      <label className="checkbox-label"><input type="checkbox" checked={draft.allow_multiple_purchases} onChange={(event) => change('allow_multiple_purchases', event.target.checked)} aria-invalid={fieldErrors.allow_multiple_purchases?.length ? true : undefined} aria-describedby={fieldErrors.allow_multiple_purchases?.length ? `${errorId}-allow_multiple_purchases-error` : undefined} /> Can be purchased multiple times.</label>
+      <label className="checkbox-label"><input type="checkbox" checked={draft.allow_multiple_purchases} onChange={(event) => change('allow_multiple_purchases', event.target.checked)} aria-invalid={fieldErrors.allow_multiple_purchases?.length ? true : undefined} aria-describedby={fieldErrors.allow_multiple_purchases?.length ? `${errorId}-allow_multiple_purchases-error` : undefined} /> Can be purchased multiple times</label>
       {fieldErrorGroup('allow_multiple_purchases', fieldErrors.allow_multiple_purchases ?? [])}
       <div className="form-actions">
          <button className="primary-button" type="submit" disabled={pending || invalidEventAssignment}>{pending ? 'Saving…' : 'Save gift'}</button>

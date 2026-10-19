@@ -109,7 +109,7 @@ for validation rules, removing/reactivating entries and development paths.
 2. Assign a gift to one occasion or leave it as **Anything**. An occasion filter
    includes Anything gifts; the Anything-only filter shows only unassigned gifts.
 3. Mark someone else's gift purchased. Ordinary gifts allow one buyer; check
-   **Can be purchased multiple times.** to allow one mark per different buyer.
+   **Can be purchased multiple times** to allow one mark per different buyer.
    There is no quantity field. Buyers can undo only their own marks.
 4. Use the refresh control to see changes from other people. Live push updates
    are not provided.

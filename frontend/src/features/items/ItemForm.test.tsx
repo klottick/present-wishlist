@@ -33,7 +33,7 @@ describe('ItemForm', () => {
     renderForm({ events: [birthday], onSaved: vi.fn(), onCancel: vi.fn() })
 
     expect(screen.getByRole('combobox', { name: /occasion/i })).toHaveDisplayValue('Anything')
-    expect(screen.getByRole('checkbox', { name: 'Can be purchased multiple times.' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Can be purchased multiple times' })).not.toBeChecked()
     expect(screen.getByRole('textbox', { name: /gift name/i })).toHaveAttribute('maxlength', '200')
     expect(screen.getByRole('textbox', { name: /gift name/i })).toBeRequired()
     expect(screen.getByRole('textbox', { name: /link/i })).toHaveAttribute('maxlength', '2000')
@@ -51,7 +51,7 @@ describe('ItemForm', () => {
     await user.type(screen.getByRole('textbox', { name: /link/i }), 'https://example.com/book')
     await user.type(screen.getByRole('textbox', { name: /notes/i }), 'For the train')
     await user.selectOptions(screen.getByRole('combobox', { name: /occasion/i }), '1')
-    await user.click(screen.getByRole('checkbox', { name: 'Can be purchased multiple times.' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Can be purchased multiple times' }))
     await user.click(screen.getByRole('button', { name: /save/i }))
 
     expect(await screen.findByText('A gift with this name is not allowed.')).toBeVisible()
@@ -59,7 +59,7 @@ describe('ItemForm', () => {
     expect(screen.getByRole('textbox', { name: /link/i })).toHaveValue('https://example.com/book')
     expect(screen.getByRole('textbox', { name: /notes/i })).toHaveValue('For the train')
     expect(screen.getByRole('combobox', { name: /occasion/i })).toHaveValue('1')
-    expect(screen.getByRole('checkbox', { name: 'Can be purchased multiple times.' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Can be purchased multiple times' })).toBeChecked()
   })
 
   it('associates every field error exactly once and combines event errors without duplicate IDs', async () => {
@@ -85,7 +85,7 @@ describe('ItemForm', () => {
       [within(form).getByRole('textbox', { name: /gift name/i }), ['Name issue one.', 'Name issue two.']],
       [within(form).getByRole('textbox', { name: /Notes/i }), ['Notes issue one.', 'Notes issue two.']],
       [within(form).getByRole('combobox', { name: /occasion/i }), ['Event issue one.', 'Event issue two.']],
-      [within(form).getByRole('checkbox', { name: 'Can be purchased multiple times.' }), ['Purchase issue one.', 'Purchase issue two.']],
+      [within(form).getByRole('checkbox', { name: 'Can be purchased multiple times' }), ['Purchase issue one.', 'Purchase issue two.']],
     ] as const
     const describedIds: string[] = []
     for (const [control, messages] of controls) {
@@ -125,7 +125,7 @@ describe('ItemForm', () => {
     expect(screen.queryByText(/This occasion is no longer configured\./)).not.toBeInTheDocument()
     expect(screen.queryByText(/Event issue one\./)).not.toBeInTheDocument()
 
-    const purchaseControl = screen.getByRole('checkbox', { name: 'Can be purchased multiple times.' })
+    const purchaseControl = screen.getByRole('checkbox', { name: 'Can be purchased multiple times' })
     await user.click(purchaseControl)
     expect(purchaseControl).not.toHaveAttribute('aria-invalid')
     expect(purchaseControl).not.toHaveAttribute('aria-describedby')

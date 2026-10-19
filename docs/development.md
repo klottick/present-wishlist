@@ -104,12 +104,11 @@ root:
 .venv/bin/python backend/manage.py reset_demo --yes
 ```
 
-In a locally built source image, run `docker compose exec app python backend/manage.py seed_demo`
-or `docker compose exec app python backend/manage.py reset_demo --yes`. To select
-that image safely, use a separate temporary Compose project as shown below; do
-not switch an existing family installation to a development image or run demo
-reset against its database. These commands are not available in the published
-`0.1.0` image. Seeding only uses
+For a locally built source image, use the isolated Compose project below and its
+`compose` command array for every Docker command. Do not run bare `docker compose
+exec` commands or switch an existing family installation to a development image;
+never run demo reset against family data. The Docker commands are not available
+in the published `0.1.0` image. Seeding only uses
 active profiles and events already present from configured YAML; it never creates
 or changes identities/events. Demo items carry an internal ownership marker, so
 reseed keeps edited examples and their marks intact. Reset requires `--yes` and
@@ -126,11 +125,12 @@ database volume. It does not read or overwrite the repository's `.env` or
 `family.yaml`. It requires Docker Compose v2.24.4 or newer for the `!override`
 port syntax.
 
-From the repository root, create private scratch configuration and a unique
-project name:
+Run these snippets from the repository root in one **Bash** session (the commands
+use Bash arrays). Create private scratch configuration under the system temporary
+directory and a unique project name:
 
-```sh
-work="$(mktemp -d /tmp/opencode/wishlist-local-image.XXXXXX)"
+```bash
+work="$(mktemp -d "${TMPDIR:-/tmp}/wishlist-local-image.XXXXXX")"
 project="wishlist-local-image-$(date +%s)-$$"
 cp compose.yaml "$work/compose.yaml"
 cat > "$work/family.yaml" <<'YAML'
@@ -164,7 +164,7 @@ Use the same `-p`, `--env-file`, and `-f` arguments for every Compose command;
 the unique project name scopes its network and named database volume, while the
 port override asks Docker for an available loopback port:
 
-```sh
+```bash
 compose=(docker compose -p "$project" --env-file "$work/.env"
   -f "$work/compose.yaml" -f "$work/compose.override.yaml")
 "${compose[@]}" config --quiet

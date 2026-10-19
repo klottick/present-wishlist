@@ -93,6 +93,27 @@ explicit command-line paths take precedence. Defaults are
 If you change the backend port, set `VITE_API_TARGET` to the corresponding URL
 when launching Vite. Stop and rerun the backend launcher after YAML changes.
 
+### Demo wishlist records
+
+For a populated local UI, first start the app as above so migrations and the
+authoritative YAML profiles/events are synchronized, then run from the repository
+root:
+
+```sh
+.venv/bin/python backend/manage.py seed_demo
+.venv/bin/python backend/manage.py reset_demo --yes
+```
+
+In Docker, run `docker compose exec app python manage.py seed_demo` or
+`docker compose exec app python manage.py reset_demo --yes`. Seeding only uses
+active profiles and events already present from configured YAML; it never creates
+or changes identities/events. Demo items carry an internal ownership marker, so
+reseed keeps edited examples and their marks intact. Reset requires `--yes` and
+deletes only marked demo items; purchase marks and edits on those examples go with
+them. Unmarked wishlist gifts and configuration are never reset. These commands
+target whichever database the app is configured to use: do not run them against a
+shared, production, or real-family database.
+
 ## Verification
 
 From the repository root:

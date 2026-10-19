@@ -107,8 +107,8 @@ root:
 For a locally built source image, use the isolated Compose project below and its
 `compose` command array for every Docker command. Do not run bare `docker compose
 exec` commands or switch an existing family installation to a development image;
-never run demo reset against family data. The Docker commands are not available
-in the published `0.1.0` image. Seeding only uses
+never run demo reset against family data. The commands require `0.1.1` or newer
+and are absent from the older `0.1.0` image. Seeding only uses
 active profiles and events already present from configured YAML; it never creates
 or changes identities/events. Demo items carry an internal ownership marker, so
 reseed keeps edited examples and their marks intact. Reset requires `--yes` and

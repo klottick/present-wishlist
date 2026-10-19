@@ -104,8 +104,9 @@ root:
 .venv/bin/python backend/manage.py reset_demo --yes
 ```
 
-In Docker, run `docker compose exec app python manage.py seed_demo` or
-`docker compose exec app python manage.py reset_demo --yes`. Seeding only uses
+In a locally built source image, run `docker compose exec app python backend/manage.py seed_demo`
+or `docker compose exec app python backend/manage.py reset_demo --yes`. These
+commands are not available in the published `0.1.0` image. Seeding only uses
 active profiles and events already present from configured YAML; it never creates
 or changes identities/events. Demo items carry an internal ownership marker, so
 reseed keeps edited examples and their marks intact. Reset requires `--yes` and

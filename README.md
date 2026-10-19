@@ -22,7 +22,9 @@ to the internet or untrusted users; accounts and TLS are not included.
 
 ## Screenshots
 
-The screenshots show the released application with fictional names and gift data.
+The screenshots show a source-development preview, not the older released `0.1.0`
+image. They use fictional names and gift data; see the
+[screenshot provenance](docs/images/README.md).
 
 ### Your wishlist
 
@@ -42,6 +44,11 @@ Other family members can see purchase marks and coordinate their own purchases.
 <img src="docs/images/wishlist-mobile.png" alt="Alex's wishlist on a narrow mobile screen, with an occasion filter and vertically arranged gift cards" width="320">
 
 ## Quick start
+
+The released `0.1.0` image does not include the newer demo-data commands or UI
+shown in the source-preview screenshots. The quick start below intentionally
+continues to install that published release. To run the current source preview,
+follow [development setup](docs/development.md#run-the-application) instead.
 
 Install Docker Engine with Compose, or Docker Desktop in **Linux-container mode**.
 Images support Linux `amd64` and `arm64`; ARM requires a 64-bit OS. Python, Node.js
@@ -101,9 +108,9 @@ for validation rules, removing/reactivating entries and development paths.
    **Family wishlists** to browse someone else's list.
 2. Assign a gift to one occasion or leave it as **Anything**. An occasion filter
    includes Anything gifts; the Anything-only filter shows only unassigned gifts.
-3. Mark someone else's gift purchased. Ordinary gifts allow one buyer; gifts
-   with **Allow multiple purchases** allow one mark per different buyer. There is
-   no quantity field. Buyers can undo only their own marks.
+3. Mark someone else's gift purchased. Ordinary gifts allow one buyer; check
+   **Can be purchased multiple times.** to allow one mark per different buyer.
+   There is no quantity field. Buyers can undo only their own marks.
 4. Use the refresh control to see changes from other people. Live push updates
    are not provided.
 
@@ -129,7 +136,7 @@ environment settings, backup/restore, exact-version updates and troubleshooting.
 ## Development and documentation
 
 - [Development and testing](docs/development.md): Python/Node setup, local servers
-  and `bash scripts/verify.sh`.
+  and `bash scripts/verify.sh`, including safe demo-data commands.
 - [Releases and publisher reuse](docs/releases.md): multi-platform GHCR publication,
   recovery and adapting the reusable workflow to another stack.
 - [Documentation index](docs/README.md): all guides, design records and historical

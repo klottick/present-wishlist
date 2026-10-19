@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "wishlist",
+  "project_id": "c8c651c8-d47e-4cf5-8d70-ed9a7db85840"
+}

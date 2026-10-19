@@ -91,7 +91,7 @@ export function DeleteItemDialog({ item, onDeleted, onCancel, getReturnFocusTarg
   }
 
   return (
-    <div className="dialog-backdrop">
+    <div className="dialog-backdrop" hidden={phase === 'checking' || phase === 'changing'}>
       <div ref={dialog} className="confirmation-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title" tabIndex={-1} onKeyDown={containKeys}>
         <h2 id="delete-dialog-title">Delete gift?</h2>
         <p>Delete “{item.name}” from this wishlist?</p>

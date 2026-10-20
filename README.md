@@ -58,7 +58,9 @@ and a source checkout are not required. Windows and macOS use Docker's Linux VM.
    `default.env.example` into a new directory. Use these assets, not the source
    archives. GitHub renames the uploaded `.env.example` to `default.env.example`.
 2. Copy `family.example.yaml` to `family.yaml` and `default.env.example` to `.env`.
-   Edit the family names and occasions in `family.yaml`.
+   Edit the family names and occasions in `family.yaml`. The published `0.1.1`
+   image does not support `family_name`; the optional branding field below is
+   available from source only until a later image is published.
 3. Generate a private random secret with `openssl rand -hex 32` and set
    `DJANGO_SECRET_KEY` in `.env`. Keep this file private and retain the same secret
    across updates. On Linux/macOS, use `chmod 600 .env` and ensure `family.yaml`
@@ -84,6 +86,8 @@ without `--quiet`, because the resolved configuration contains your secret.
 The installation's `family.yaml` defines the available people and occasions:
 
 ```yaml
+# Optional in source versions; not supported by the published 0.1.1 image.
+# family_name: Smith
 members:
   alex: Alex
   sam: Sam
@@ -95,6 +99,11 @@ events:
 Keys are permanent identities; labels are the displayed names. Rename a person
 or occasion by changing its label, not its key. Anything is built in and must
 not be added to the event mapping.
+
+Source versions may set `family_name` to a trimmed display label (maximum 80
+characters). It changes the app header/tab and family-list labels only; blank or
+omitted names keep generic wording. This label is not an identity. The public
+`GET /api/config/` endpoint returns only the validated family name.
 
 Restart the backend after YAML changes with `docker compose restart app`. If your
 editor replaces the file, use `docker compose up -d --force-recreate --wait app`

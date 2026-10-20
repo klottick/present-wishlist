@@ -1,3 +1,5 @@
+# Optional in source versions only; published 0.1.1 images reject this field.
+# family_name: Smith
 members:
   alex: Alex
   sam: Sam

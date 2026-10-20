@@ -181,6 +181,7 @@ describe('PurchaseControls', () => {
     let sessionReads = 0
     const fetchMock = vi.fn<typeof fetch>((input, init) => {
       const path = String(input)
+      if (path === '/api/config/') return Promise.resolve(json({ family_name: null }))
       if (path === '/api/profiles/') return Promise.resolve(json([profile, { id: 3, key: 'alex', name: 'Alex' }]))
       if (path === '/api/session/') {
         sessionReads += 1

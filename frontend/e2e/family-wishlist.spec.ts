@@ -50,6 +50,35 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     const brandingOverflow = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: document.documentElement.clientWidth }))
     expect(brandingOverflow.width, `branding horizontal overflow: ${JSON.stringify(brandingOverflow)}`).toBeLessThanOrEqual(brandingOverflow.viewport)
     await page.getByRole('button', { name: 'My wishlist' }).click()
+    if (testInfo.project.use.viewport?.width === 390) {
+      const longFamilyName = 'W'.repeat(80)
+      await page.route('**/api/config/', (route) => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ family_name: longFamilyName }),
+      }))
+      await page.reload()
+      await expect(page).toHaveTitle(`${longFamilyName} Family Wishlist`)
+      await expect(page.locator('.app-title')).toHaveText(`${longFamilyName} Family Wishlist`)
+      await page.getByRole('button', { name: `${longFamilyName} Family wishlists` }).click()
+      await expect(page.getByRole('heading', { name: `${longFamilyName} Family wishlists` })).toBeVisible()
+      const longBrandingGeometry = await page.evaluate(() => {
+        const selectors = ['.app-title', '.wishlist-navigation button[aria-current="page"]', '.family-browser h1']
+        const boxes = selectors.map((selector) => {
+          const { left, right, width, height } = document.querySelector(selector)!.getBoundingClientRect()
+          return { selector, left, right, width, height }
+        })
+        return { viewport: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth, boxes }
+      })
+      expect(longBrandingGeometry.scrollWidth, JSON.stringify(longBrandingGeometry)).toBeLessThanOrEqual(longBrandingGeometry.viewport)
+      for (const box of longBrandingGeometry.boxes) {
+        expect(box.left, JSON.stringify(box)).toBeGreaterThanOrEqual(0)
+        expect(box.right, JSON.stringify(box)).toBeLessThanOrEqual(longBrandingGeometry.viewport)
+        expect(box.height, JSON.stringify(box)).toBeGreaterThan(0)
+      }
+      await page.unroute('**/api/config/')
+      await page.getByRole('button', { name: 'My wishlist' }).click()
+    }
 
     const add = async (name: string, event?: string, multiple = false) => {
       await page.getByRole('button', { name: 'Add a gift' }).click()

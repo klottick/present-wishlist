@@ -20,7 +20,7 @@ button:disabled { cursor: wait; opacity: .65; }
   background: #fff;
   border-bottom: 1px solid #e1e8e2;
 }
-.app-title { color: #244c3b; font-size: 1.15rem; font-weight: 750; text-decoration: none; }
+.app-title { min-width: 0; overflow-wrap: anywhere; color: #244c3b; font-size: 1.15rem; font-weight: 750; text-decoration: none; }
 .current-identity { display: flex; align-items: center; gap: 1rem; }
 .current-identity button, .identity-options button {
   border: 1px solid #9ab7a7;
@@ -54,6 +54,7 @@ code { padding: .15rem .3rem; border-radius: .25rem; background: #f0f3ef; }
   background: #fff;
   padding: .65rem .9rem;
 }
+.wishlist-navigation button, .family-browser h1 { min-width: 0; overflow-wrap: anywhere; }
 .wishlist-navigation button[aria-current="page"], .family-members button[aria-pressed="true"] {
   background: #e4f0e7;
   border-color: #668b74;

@@ -39,6 +39,13 @@ class ConfigurationTests(SimpleTestCase):
                 self.assert_invalid(f"family_name: {name}\nmembers: {{}}\nevents: {{}}\n")
         self.assert_invalid("family_name: Smith\nmembers: {}\nevents: {}\nextra: true\n")
 
+    def test_accepts_eighty_unicode_and_apostrophe_characters_as_text(self):
+        family_name = "É’" * 40
+        config = self.load_contents(
+            f"family_name: \"{family_name}\"\nmembers: {{}}\nevents: {{}}\n"
+        )
+        self.assertEqual(config.family_name, family_name)
+
     def test_rejects_duplicate_yaml_keys(self):
         self.assert_invalid(
             "members:\n  alex: Alex\n  alex: Alexander\nevents: {}\n"
@@ -184,3 +191,27 @@ class FamilyBrandingApiTests(SimpleTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"family_name": "Smith"})
+
+    def test_missing_or_invalid_yaml_returns_private_generic_configuration_error(self):
+        with TemporaryDirectory() as directory:
+            config_path = Path(directory) / "private-family.yaml"
+            client = Client(raise_request_exception=False)
+            for contents in (None, "family_name: !secret secret-data\nmembers: {}\nevents: {}\n"):
+                with self.subTest(contents=contents):
+                    if contents is None:
+                        config_path.unlink(missing_ok=True)
+                    else:
+                        config_path.write_text(contents, encoding="utf-8")
+                    with override_settings(FAMILY_CONFIG_PATH=config_path):
+                        response = client.get("/api/config/")
+
+                    self.assertEqual(response.status_code, 503)
+                    self.assertEqual(
+                        response.json(),
+                        {"code": "configuration_error", "message": "Family configuration is unavailable."},
+                    )
+                    self.assertEqual(response["Cache-Control"], "no-store")
+                    self.assertNotIn(str(config_path), response.content.decode())
+                    self.assertNotIn("secret-data", response.content.decode())
+                    self.assertNotIn("profile", response.json())
+                    self.assertNotIn("purchase", response.json())

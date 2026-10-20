@@ -13,6 +13,7 @@ class ConfigError(ValueError):
 class FamilyConfig:
     members: dict[str, str]
     events: dict[str, str]
+    family_name: str | None = None
 
 
 _KEY_PATTERN = re.compile(r"[a-z][a-z0-9_-]{0,79}\Z")
@@ -47,14 +48,21 @@ def load_family_config(path: Path) -> FamilyConfig:
 
     if not isinstance(parsed, dict):
         raise ConfigError("configuration must be a mapping with members and events")
-    if set(parsed) != {"members", "events"}:
-        raise ConfigError("configuration must contain exactly 'members' and 'events'")
+    if set(parsed) - {"family_name", "members", "events"} or not {"members", "events"}.issubset(parsed):
+        raise ConfigError("configuration must contain 'members' and 'events' and no unknown fields")
+    family_name = parsed.get("family_name")
+    if family_name is not None:
+        if not isinstance(family_name, str):
+            raise ConfigError("'family_name' must be a string")
+        family_name = family_name.strip() or None
+        if family_name is not None and len(family_name) > 80:
+            raise ConfigError("'family_name' exceeds 80 characters")
     members = _validate_mapping("members", parsed["members"])
     events = _validate_mapping("events", parsed["events"])
     for key, label in events.items():
         if key == "anything" or label.casefold() == "anything":
             raise ConfigError("'anything' is reserved and cannot be configured as an event")
-    return FamilyConfig(members=members, events=events)
+    return FamilyConfig(members=members, events=events, family_name=family_name)
 
 
 def _validate_mapping(name: str, value) -> dict[str, str]:

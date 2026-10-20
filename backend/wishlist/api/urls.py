@@ -1,12 +1,14 @@
 from django.urls import path
 
 from wishlist.api.catalog import EventsView, ProfilesView
+from wishlist.api.config import ConfigView
 from wishlist.api.items import ItemCreateView, ItemDetailView, ItemListView
 from wishlist.api.purchases import PurchaseView
 from wishlist.api.session import SessionView
 
 
 urlpatterns = [
+    path("config/", ConfigView.as_view(), name="api-config"),
     path("session/", SessionView.as_view(), name="api-session"),
     path("profiles/", ProfilesView.as_view(), name="api-profiles"),
     path("events/", EventsView.as_view(), name="api-events"),

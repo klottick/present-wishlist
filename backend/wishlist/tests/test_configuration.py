@@ -6,6 +6,7 @@ from django.test import SimpleTestCase, TestCase, override_settings
 
 from wishlist.configuration.loader import ConfigError, load_family_config
 from wishlist.models import Event, FamilyProfile
+from django.test import Client
 
 
 class ConfigurationTests(SimpleTestCase):
@@ -21,6 +22,29 @@ class ConfigurationTests(SimpleTestCase):
 
         self.assertEqual(config.members, {"alex": "Alex"})
         self.assertEqual(config.events, {"birthday": "Birthday"})
+
+    def test_loads_optional_family_name_and_uses_none_when_omitted_or_blank(self):
+        named = self.load_contents(
+            "family_name: '  Smith  '\nmembers: {}\nevents: {}\n"
+        )
+        self.assertEqual(named.family_name, "Smith")
+        for name in (None, "", "   "):
+            contents = ("family_name: null\n" if name is None else f"family_name: '{name}'\n")
+            config = self.load_contents(contents + "members: {}\nevents: {}\n")
+            self.assertIsNone(config.family_name)
+
+    def test_rejects_invalid_family_name_values_and_unknown_top_level_keys(self):
+        for name in ("42", "true", "[]", "{}", "2026-10-15", f"'{('x' * 81)}'"):
+            with self.subTest(name=name):
+                self.assert_invalid(f"family_name: {name}\nmembers: {{}}\nevents: {{}}\n")
+        self.assert_invalid("family_name: Smith\nmembers: {}\nevents: {}\nextra: true\n")
+
+    def test_accepts_eighty_unicode_and_apostrophe_characters_as_text(self):
+        family_name = "É’" * 40
+        config = self.load_contents(
+            f"family_name: \"{family_name}\"\nmembers: {{}}\nevents: {{}}\n"
+        )
+        self.assertEqual(config.family_name, family_name)
 
     def test_rejects_duplicate_yaml_keys(self):
         self.assert_invalid(
@@ -153,3 +177,41 @@ class ConfigurationCommandTests(TestCase):
             config_path.write_text("members: []\nevents: {}\n", encoding="utf-8")
             with self.assertRaisesRegex(CommandError, "members"):
                 call_command("sync_family_config", config=str(config_path))
+
+
+class FamilyBrandingApiTests(SimpleTestCase):
+    def test_public_config_returns_only_validated_branding(self):
+        with TemporaryDirectory() as directory:
+            config_path = Path(directory) / "family.yaml"
+            config_path.write_text(
+                "family_name: ' Smith '\nmembers: {}\nevents: {}\n", encoding="utf-8"
+            )
+            with override_settings(FAMILY_CONFIG_PATH=config_path):
+                response = Client().get("/api/config/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"family_name": "Smith"})
+
+    def test_missing_or_invalid_yaml_returns_private_generic_configuration_error(self):
+        with TemporaryDirectory() as directory:
+            config_path = Path(directory) / "private-family.yaml"
+            client = Client(raise_request_exception=False)
+            for contents in (None, "family_name: !secret secret-data\nmembers: {}\nevents: {}\n"):
+                with self.subTest(contents=contents):
+                    if contents is None:
+                        config_path.unlink(missing_ok=True)
+                    else:
+                        config_path.write_text(contents, encoding="utf-8")
+                    with override_settings(FAMILY_CONFIG_PATH=config_path):
+                        response = client.get("/api/config/")
+
+                    self.assertEqual(response.status_code, 503)
+                    self.assertEqual(
+                        response.json(),
+                        {"code": "configuration_error", "message": "Family configuration is unavailable."},
+                    )
+                    self.assertEqual(response["Cache-Control"], "no-store")
+                    self.assertNotIn(str(config_path), response.content.decode())
+                    self.assertNotIn("secret-data", response.content.decode())
+                    self.assertNotIn("profile", response.json())
+                    self.assertNotIn("purchase", response.json())

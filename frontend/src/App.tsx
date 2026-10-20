@@ -4,8 +4,10 @@ import { AsyncState } from './components/AsyncState'
 import { IdentityProvider, useIdentity } from './features/identity/IdentityProvider'
 import { NamePicker } from './features/identity/NamePicker'
 import { WishlistPage } from './features/wishlists/WishlistPage'
+import { FamilyBrandingProvider, useFamilyBranding } from './features/branding/FamilyBranding'
 
 function AuthenticatedArea({ profile, profiles, onSwitch }: { profile: NonNullable<ReturnType<typeof useIdentity>['profile']>; profiles: ReturnType<typeof useIdentity>['profiles']; onSwitch(): void }) {
+  const branding = useFamilyBranding()
   const [view, setView] = useState<'mine' | 'family'>('mine')
   const [familyOwnerId, setFamilyOwnerId] = useState<number | null>(null)
   const familyOwner = profiles.find((candidate) => candidate.id === familyOwnerId)
@@ -15,12 +17,12 @@ function AuthenticatedArea({ profile, profiles, onSwitch }: { profile: NonNullab
       <main className="page-shell">
         <nav className="wishlist-navigation" aria-label="Wishlist navigation">
           <button type="button" aria-current={view === 'mine' ? 'page' : undefined} onClick={() => setView('mine')}>My wishlist</button>
-          <button type="button" aria-current={view === 'family' ? 'page' : undefined} onClick={() => { setView('family'); setFamilyOwnerId(null) }}>Family wishlists</button>
+          <button type="button" aria-current={view === 'family' ? 'page' : undefined} onClick={() => { setView('family'); setFamilyOwnerId(null) }}>{branding.familyHeading}</button>
         </nav>
         {view === 'mine'
           ? <WishlistPage key={`mine-${profile.id}`} owner={profile} />
           : <section className="family-browser" aria-labelledby="family-title">
-            <h1 id="family-title">Family wishlists</h1>
+            <h1 id="family-title">{branding.familyHeading}</h1>
             <div className="family-members" aria-label="Family members">
               {profiles.filter((candidate) => candidate.id !== profile.id).map((candidate) => (
                 <button type="button" key={candidate.id} aria-pressed={familyOwnerId === candidate.id}
@@ -71,5 +73,5 @@ function IdentityGate() {
 }
 
 export default function App() {
-  return <IdentityProvider><IdentityGate /></IdentityProvider>
+  return <FamilyBrandingProvider><IdentityProvider><IdentityGate /></IdentityProvider></FamilyBrandingProvider>
 }

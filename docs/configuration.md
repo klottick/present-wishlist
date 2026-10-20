@@ -9,7 +9,7 @@ development, edit `backend/config/family.yaml` unless you selected another path.
 ## Format
 
 ```yaml
-# Optional in source versions; the published 0.1.1 image does not support it.
+# Optional display name (supported in 0.1.2 and newer).
 family_name: Smith
 members:
   alex: Alex
@@ -24,12 +24,12 @@ Both `members` and `events` must be present and must be mappings. Empty mappings
 are valid. The Docker example includes Alex and Sam; the source-development file
 starts with no members. Add your own names before using that empty picker.
 
-`family_name` is an optional source-version display label. It must be a string
+`family_name` is an optional display label supported in `0.1.2` and newer. It must be a string
 of at most 80 characters; surrounding whitespace is trimmed, and omitted,
 `null`, or blank values retain generic app wording. It affects only the header,
 browser tab, and family-list labels, never member identity or personal wishlist
-headings. It is available from source only; released image `0.1.1` rejects this
-new YAML field. The public `GET /api/config/` endpoint supplies only this
+headings. Older images, including `0.1.1`, reject this field; upgrade before
+adding it. The public `GET /api/config/` endpoint supplies only this
 validated value to the interface.
 
 | Field | Rules |
@@ -70,7 +70,7 @@ at backend startup. Invalid configuration prevents the supported startup
 workflow from serving requests. Editing the file alone does not update the
 running app's members or occasions.
 
-In the source version, branding is read from YAML when the browser loads
+In `0.1.2` and newer, branding is read from YAML when the browser loads
 `/api/config/`. Reload the page after changing `family_name`; it does not require
 member/occasion synchronization. If an editor replaces a Docker-mounted file,
 recreate the container as described below so it sees the new file. An unreadable

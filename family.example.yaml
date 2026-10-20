@@ -1,4 +1,4 @@
-# Optional in source versions only; published 0.1.1 images reject this field.
+# Optional display name (supported in 0.1.2 and newer).
 # family_name: Smith
 members:
   alex: Alex

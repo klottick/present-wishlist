@@ -65,9 +65,17 @@ Account-based login itself is not implemented.
 
 ## Applying changes
 
-The entire file is validated before synchronization, which runs at backend
-startup. Invalid configuration prevents the supported startup workflow from
-serving requests. Editing the file alone does not update an already-running app.
+The entire file is validated before member/occasion synchronization, which runs
+at backend startup. Invalid configuration prevents the supported startup
+workflow from serving requests. Editing the file alone does not update the
+running app's members or occasions.
+
+In the source version, branding is read from YAML when the browser loads
+`/api/config/`. Reload the page after changing `family_name`; it does not require
+member/occasion synchronization. If an editor replaces a Docker-mounted file,
+recreate the container as described below so it sees the new file. An unreadable
+or invalid configuration produces a generic branding fallback rather than
+exposing file contents or paths.
 
 For Docker:
 

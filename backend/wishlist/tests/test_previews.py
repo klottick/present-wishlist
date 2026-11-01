@@ -93,6 +93,32 @@ class PreviewTests(WishlistTestCase):
         self.assertLessEqual(Cache.objects.count(), 3)
         self.assertTrue(Cache.objects.filter(url='https://example.com/book').exists())
 
+    def test_product_image_element_is_used_when_social_metadata_is_missing(self):
+        html = '''<title>A product</title><meta name="description" content="A useful gift">
+        <img id="siteLogo" src="https://images.example/logo.jpg">
+        <img id="landingImage" src="https://images.example/product-thumb.jpg"
+             data-old-hires="https://images.example/product.jpg">'''
+        with patch('wishlist.services.previews.fetch_html', return_value=('https://shop.example/product', html)), \
+             patch('wishlist.services.public_http.socket.getaddrinfo', return_value=dns_result()):
+            response = self.preview()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['image_url'], 'https://images.example/product.jpg')
+        self.assertEqual(response.json()['title'], 'A product')
+
+    def test_social_image_still_takes_priority_over_product_image(self):
+        html = '''<meta property="og:image" content="/social.jpg">
+        <img id="landingImage" src="https://images.example/product.jpg">'''
+        with patch('wishlist.services.previews.fetch_html', return_value=('https://shop.example/product', html)), \
+             patch('wishlist.services.public_http.socket.getaddrinfo', return_value=dns_result()):
+            self.assertEqual(self.preview().json()['image_url'], 'https://shop.example/social.jpg')
+
+    def test_unsafe_product_image_uses_safe_fallback_without_picking_logo(self):
+        html = '''<title>Product</title><img src="https://images.example/logo.jpg">
+        <img id="landingImage" data-old-hires="http://[" src="https://images.example/product.jpg">'''
+        with patch('wishlist.services.previews.fetch_html', return_value=('https://shop.example/product', html)), \
+             patch('wishlist.services.public_http.socket.getaddrinfo', return_value=dns_result()):
+            self.assertEqual(self.preview().json()['image_url'], 'https://images.example/product.jpg')
+
 
 class PublicHTTPTests(SimpleTestCase):
     def test_rejects_private_mixed_and_nonstandard_destinations(self):
@@ -120,7 +146,7 @@ class PublicHTTPTests(SimpleTestCase):
         self.assertEqual(context.wrap_socket.call_args.kwargs['server_hostname'], 'example.com')
         self.assertEqual(connection.host, 'example.com')
 
-    def test_redirect_to_private_and_large_pages_fall_back(self):
+    def test_redirect_to_private_is_rejected(self):
         from wishlist.services.public_http import FetchError, UnsafeURL, fetch_html
         redirect = MagicMock(status=302)
         redirect.getheader.side_effect = lambda key, default=None: 'http://127.0.0.1/' if key == 'Location' else default
@@ -130,14 +156,31 @@ class PublicHTTPTests(SimpleTestCase):
              patch('wishlist.services.public_http.PinnedConnection', return_value=connection):
             with self.assertRaises(UnsafeURL):
                 fetch_html('https://example.com/')
-        response = MagicMock(status=200)
-        response.getheader.side_effect = lambda key, default=None: 'text/html' if key == 'Content-Type' else default
-        response.read1 = io.BytesIO(b'x' * (1024 * 1024 + 1)).read
-        connection.getresponse.return_value = response
-        with patch('wishlist.services.public_http.socket.getaddrinfo', return_value=dns_result()), \
-             patch('wishlist.services.public_http.PinnedConnection', return_value=connection):
-            with self.assertRaises(FetchError):
-                fetch_html('https://example.com/')
+
+    def test_large_pages_return_only_bounded_prefix_for_metadata(self):
+        from email.message import Message
+        from wishlist.services.public_http import fetch_html
+        prefix = b'<title>Product</title><img id="landingImage" src="https://images.example/product.jpg">'
+        body = prefix + b' ' * (2 * 1024 * 1024)
+        for advertised in (None, str(len(body))):
+            with self.subTest(content_length=advertised):
+                response = MagicMock(status=200)
+                response.getheader.side_effect = lambda key, default=None: {
+                    'Content-Type': 'text/html', 'Content-Length': advertised,
+                }.get(key, default)
+                response.headers = Message()
+                response.headers['Content-Type'] = 'text/html; charset=utf-8'
+                stream = io.BytesIO(body)
+                response.read1 = stream.read
+                connection = MagicMock()
+                connection.getresponse.return_value = response
+                with patch('wishlist.services.public_http.socket.getaddrinfo', return_value=dns_result()), \
+                     patch('wishlist.services.public_http.PinnedConnection', return_value=connection):
+                    final, html = fetch_html('https://example.com/product')
+                self.assertEqual(final, 'https://example.com/product')
+                self.assertTrue(html.startswith(prefix.decode()))
+                self.assertEqual(len(html.encode()), 1024 * 1024)
+                self.assertEqual(stream.tell(), 1024 * 1024)
 
     def test_deadline_covers_slow_reads_and_dns(self):
         from wishlist.services.public_http import FetchError, fetch_html

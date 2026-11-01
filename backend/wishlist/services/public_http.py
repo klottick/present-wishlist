@@ -31,6 +31,7 @@ class PublicTarget:
 
 _dns_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix='preview-dns')
 _dns_slots = threading.BoundedSemaphore(4)
+MAX_HTML_BYTES = 1024 * 1024
 
 
 def remaining(deadline: float) -> float:
@@ -157,20 +158,17 @@ def fetch_html(url: str, *, deadline: float | None = None) -> tuple[str, str]:
                 raise FetchError('Destination does not provide an HTML page.')
             if response.getheader('Content-Encoding', 'identity').lower() != 'identity':
                 raise FetchError('Compressed responses are unsupported.')
-            length = response.getheader('Content-Length')
-            if length and int(length) > 1024 * 1024:
-                raise FetchError('Preview page is too large.')
             body = bytearray()
-            while True:
+            # Product pages can be much larger than their useful metadata.
+            # Parse a bounded prefix instead of discarding the whole preview.
+            while len(body) < MAX_HTML_BYTES:
                 remaining(deadline)
                 if connection.sock is not None:
                     connection.sock.settimeout(min(2, remaining(deadline)))
-                chunk = response.read1(min(32768, 1024 * 1024 + 1 - len(body)))
+                chunk = response.read1(min(32768, MAX_HTML_BYTES - len(body)))
                 if not chunk:
                     break
                 body.extend(chunk)
-                if len(body) > 1024 * 1024:
-                    raise FetchError('Preview page is too large.')
             remaining(deadline)
             charset = response.headers.get_content_charset() or 'utf-8'
             try:

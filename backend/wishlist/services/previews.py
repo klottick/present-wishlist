@@ -23,6 +23,7 @@ class MetadataParser(HTMLParser):
         self.meta = {}
         self.title = ''
         self.in_title = False
+        self.product_images = []
 
     def handle_starttag(self, tag, attrs):
         values = {key.lower(): value for key, value in attrs if value is not None}
@@ -32,6 +33,13 @@ class MetadataParser(HTMLParser):
                 self.meta.setdefault(key, values.get('content', '')[:4000])
         elif tag == 'title':
             self.in_title = True
+        elif tag == 'img' and values.get('id') in ('landingImage', 'imgBlkFront', 'ebooksImgBlkFront'):
+            # Amazon product pages often omit social image metadata. Read the
+            # named product image, never an arbitrary page image or store logo.
+            for field in ('data-old-hires', 'src'):
+                image = values.get(field, '').strip()
+                if image and image not in self.product_images and len(self.product_images) < 4:
+                    self.product_images.append(image)
 
     def handle_endtag(self, tag):
         if tag == 'title':
@@ -78,12 +86,16 @@ def preview_for_link(link) -> dict:
             parser.feed(html)
             values['title'] = (parser.meta.get('og:title') or parser.title).strip()[:300]
             values['description'] = (parser.meta.get('og:description') or parser.meta.get('description', '')).strip()[:500]
-            image = parser.meta.get('og:image', '').strip()
-            if image:
+            images = [parser.meta.get('og:image', ''), *parser.product_images]
+            for image in dict.fromkeys(images):
+                image = image.strip()
+                if not image:
+                    continue
                 try:
                     image = urljoin(final_url, image)
                     public_target(image, deadline=deadline)
                     values['image_url'] = image
+                    break
                 except ValueError:
                     pass
             values['succeeded'] = bool(values['title'] or values['description'] or values['image_url'])

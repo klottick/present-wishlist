@@ -1,6 +1,6 @@
 # Profile Photos and Gift Links Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add profile photos, single-row people lists, multiple gift links, and automatic preview cards to the running wishlist.
 
@@ -33,12 +33,12 @@
 
 **Interfaces:** Profiles add nullable `avatar_url`; avatar PUT/DELETE at `/api/profile/avatar/` returns Profile. Public normalized JPEG GET at `/api/profiles/<id>/avatar/`. Items add `links: [{id, url}]`; writes accept `links: string[]` or legacy `link: string`, never both. Preserve IDs for unchanged URLs.
 
-- [ ] Write API tests asserting upload/replace/remove, JPEG dimensions/metadata, invalid/animated/oversized images, active-profile boundaries, CSRF, and public image reads.
-- [ ] Write ordered-link tests asserting trimming, zero/ten/eleven links, duplicates, per-row errors, legacy writes, atomic validation, owner-only editing, stable IDs, and purchase preservation. Add a migration test using historical models to verify the old URL becomes the first link.
-- [ ] Run `.venv/bin/python backend/manage.py test wishlist.tests.test_avatars wishlist.tests.test_links --settings=project.test_settings` and confirm failure because endpoints and links are absent.
-- [ ] Add avatar fields and WishlistItemLink, migration, normalization and API serving, link validation/replacement and response prefetching; add Pillow with a verified compatible pin.
-- [ ] Run the targeted tests and existing catalog/identity/item/purchase suites; update exact profile-shape expectations for additive avatar_url.
-- [ ] Commit the tested persistent photo/link implementation.
+- [x] Write API tests asserting upload/replace/remove, JPEG dimensions/metadata, invalid/animated/oversized images, active-profile boundaries, CSRF, and public image reads.
+- [x] Write ordered-link tests asserting trimming, zero/ten/eleven links, duplicates, per-row errors, legacy writes, atomic validation, owner-only editing, stable IDs, and purchase preservation. Add a migration test using historical models to verify the old URL becomes the first link.
+- [x] Run `.venv/bin/python backend/manage.py test wishlist.tests.test_avatars wishlist.tests.test_links --settings=project.test_settings` and confirm failure because endpoints and links are absent.
+- [x] Add avatar fields and WishlistItemLink, migration, normalization and API serving, link validation/replacement and response prefetching; add Pillow with a verified compatible pin.
+- [x] Run the targeted tests and existing catalog/identity/item/purchase suites; update exact profile-shape expectations for additive avatar_url.
+- [x] Commit the tested persistent photo/link implementation.
 
 ### Task 2: Safe, cached metadata extraction
 
@@ -46,11 +46,11 @@
 
 **Interfaces:** `fetch_html(url: str) -> tuple[str, str]` returns final URL and HTML, with `UnsafeURL`/`FetchError` failures. `preview_for_link(link) -> dict` returns `{title, description, image_url, site_name, url, status}`. POST `/api/item-links/<id>/preview/` requires selected identity and an active owner.
 
-- [ ] Write mocked-network tests for OG/HTML metadata extraction, relative URLs, bounded text, cached successes/failures, missing identity, archived owners, and inaccessible sites.
-- [ ] Write transport tests rejecting unsafe schemes, credentials, nonstandard ports, private/mixed DNS, redirect-to-private, oversized responses; verify pinned address, original Host, verified TLS name, and time budget behavior.
-- [ ] Run `.venv/bin/python backend/manage.py test wishlist.tests.test_previews --settings=project.test_settings` and observe missing-feature failures.
-- [ ] Implement validated DNS-pinned connections, bounded reads/redirects/deadlines, HTML parsing, public thumbnail validation, persistent cache, concurrent request collapse, and endpoint without network calls inside write transactions.
-- [ ] Run the targeted suite and backend suite; commit.
+- [x] Write mocked-network tests for OG/HTML metadata extraction, relative URLs, bounded text, cached successes/failures, missing identity, archived owners, and inaccessible sites.
+- [x] Write transport tests rejecting unsafe schemes, credentials, nonstandard ports, private/mixed DNS, redirect-to-private, oversized responses; verify pinned address, original Host, verified TLS name, and time budget behavior.
+- [x] Run `.venv/bin/python backend/manage.py test wishlist.tests.test_previews --settings=project.test_settings` and observe missing-feature failures.
+- [x] Implement validated DNS-pinned connections, bounded reads/redirects/deadlines, HTML parsing, public thumbnail validation, persistent cache, concurrent request collapse, and endpoint without network calls inside write transactions.
+- [x] Run the targeted suite and backend suite; commit.
 
 ### Task 3: People rows, photo editor, multi-link forms and cards
 
@@ -58,11 +58,11 @@
 
 **Interfaces:** Upload client uses FormData and CSRF without forcing JSON Content-Type. Identity context supplies `updateProfile(profile, expectedGeneration)` to refresh local photo/catalog without resetting draft forms. ItemInput uses `links: string[]`, retaining optional legacy input for compatibility. Preview requests deduplicate and abort/ignore obsolete identities.
 
-- [ ] Write tests exercising photo selection/save/remove/errors, stale response rejection, multipart headers, Add another link/Remove, zero links, editing existing URLs, inline errors, preview loading/fallback and safe destination rendering.
-- [ ] Run `npm --prefix frontend test` and observe failures for missing UI behavior.
-- [ ] Read Impeccable craft-floor, inspect the existing rendered UI, then implement shared avatars, one-row people selectors, inline photo editor, ordered inputs and asynchronous metadata cards.
-- [ ] Run `npm --prefix frontend test`, `npm --prefix frontend run lint`, and `npm --prefix frontend run build`; adapt existing form tests to links arrays and add deterministic preview endpoint fixtures.
-- [ ] Commit the tested UI changes.
+- [x] Write tests exercising photo selection/save/remove/errors, stale response rejection, multipart headers, Add another link/Remove, zero links, editing existing URLs, inline errors, preview loading/fallback and safe destination rendering.
+- [x] Run `npm --prefix frontend test` and observe failures for missing UI behavior.
+- [x] Read Impeccable craft-floor, inspect the existing rendered UI, then implement shared avatars, one-row people selectors, inline photo editor, ordered inputs and asynchronous metadata cards.
+- [x] Run `npm --prefix frontend test`, `npm --prefix frontend run lint`, and `npm --prefix frontend run build`; adapt existing form tests to links arrays and add deterministic preview endpoint fixtures.
+- [x] Commit the tested UI changes.
 
 ### Task 4: Integrated verification, documentation and deployment
 

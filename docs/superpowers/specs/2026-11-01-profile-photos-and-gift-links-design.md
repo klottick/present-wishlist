@@ -1,7 +1,7 @@
 # Profile photos and multiple gift links
 
 Date: 2026-11-01
-Status: Feature scope confirmed; detailed design awaiting approval.
+Status: Approved by the user on 2026-11-01; implementation in progress.
 
 ## Intent and confirmed scope
 

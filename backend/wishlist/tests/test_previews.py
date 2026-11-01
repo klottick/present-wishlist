@@ -124,3 +124,25 @@ class PublicHTTPTests(SimpleTestCase):
         with patch('wishlist.services.public_http.time.monotonic', side_effect=[0, 9]):
             with self.assertRaises(FetchError):
                 fetch_html('https://example.com/')
+
+    def test_rejects_invalid_url_even_when_dns_would_be_public(self):
+        from wishlist.services.public_http import UnsafeURL, public_target
+        for url in ('https://user:password@example.com/', 'https://example.com:8080/',
+                    'https://example.com:0/', 'ftp://example.com/', 'https://exam\nple.com/'):
+            with self.subTest(url=url), patch('wishlist.services.public_http.socket.getaddrinfo', return_value=dns_result()):
+                with self.assertRaises(UnsafeURL):
+                    public_target(url)
+
+    def test_deadline_interrupts_response_even_if_http_client_releases_socket(self):
+        from wishlist.services.public_http import PinnedConnection, public_target
+        with patch('wishlist.services.public_http.socket.getaddrinfo', return_value=dns_result()):
+            target = public_target('http://example.com/')
+        raw = MagicMock()
+        with patch('wishlist.services.public_http.socket.socket', return_value=raw):
+            connection = PinnedConnection(target, timeout=2)
+            connection.connect()
+        # HTTPConnection detaches its socket when a Connection: close response
+        # owns the remaining body. The hard deadline still has to interrupt it.
+        connection.sock = None
+        connection.expire()
+        self.assertTrue(raw.shutdown.called)

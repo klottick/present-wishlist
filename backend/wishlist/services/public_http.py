@@ -49,7 +49,7 @@ def public_target(url: str, *, deadline: float | None = None) -> PublicTarget:
         parsed = urlsplit(url)
         hostname = (parsed.hostname or '').encode('idna').decode('ascii')
         scheme = parsed.scheme.lower()
-        port = parsed.port or (443 if scheme == 'https' else 80)
+        port = parsed.port if parsed.port is not None else (443 if scheme == 'https' else 80)
     except (ValueError, UnicodeError) as error:
         raise UnsafeURL('Invalid URL.') from error
     if scheme not in ('http', 'https') or not hostname or parsed.username is not None or parsed.password is not None:
@@ -93,11 +93,13 @@ class PinnedConnection(http.client.HTTPConnection):
     def __init__(self, target: PublicTarget, timeout: float):
         super().__init__(target.hostname, target.port, timeout=timeout)
         self.target = target
+        self._active_socket = None
 
     def connect(self):
         # socket.connect receives the validated numeric IP; no second DNS lookup.
         raw = socket.socket(self.target.family, socket.SOCK_STREAM)
         self.sock = raw
+        self._active_socket = raw
         try:
             raw.settimeout(self.timeout)
             address = (self.target.address, self.target.port)
@@ -106,6 +108,7 @@ class PinnedConnection(http.client.HTTPConnection):
             raw.connect(address)
             if self.target.scheme == 'https':
                 self.sock = ssl.create_default_context().wrap_socket(raw, server_hostname=self.target.hostname)
+                self._active_socket = self.sock
         except Exception:
             raw.close()
             self.sock = None
@@ -113,7 +116,7 @@ class PinnedConnection(http.client.HTTPConnection):
 
     def expire(self):
         # shutdown also interrupts HTTPResponse's file object on slow headers/body.
-        sock = self.sock
+        sock = self._active_socket
         if sock is not None:
             try:
                 sock.shutdown(socket.SHUT_RDWR)

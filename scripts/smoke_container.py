@@ -6,6 +6,7 @@ reads real family files, or uses the source-development servers.
 """
 
 import argparse
+import base64
 import http.cookiejar
 import json
 from pathlib import Path
@@ -93,8 +94,8 @@ class Session:
         if method not in {"GET", "HEAD"} and csrf:
             token = next((cookie.value for cookie in self.cookies if cookie.name == "csrftoken"), "")
             request_headers["X-CSRFToken"] = token
-        body = None if data is None else json.dumps(data).encode()
-        if body is not None:
+        body = data if isinstance(data, bytes) else None if data is None else json.dumps(data).encode()
+        if body is not None and not isinstance(data, bytes):
             request_headers["Content-Type"] = "application/json"
         request = urllib.request.Request(self.origin + path, method=method, data=body, headers=request_headers)
         try:
@@ -179,7 +180,21 @@ assert not shutil.which('node') and not shutil.which('npm')
     sam.api("/api/session/", "PUT", {"profile_id": ids["sam"]})
     alex.api("/api/session/", headers={"Host": "untrusted.invalid"}, status=400)
     assert alex.api("/api/session/", headers={"X-Forwarded-Proto": "https", "X-Forwarded-Host": "untrusted.invalid"})["profile"]["id"] == ids["alex"]
-    item = alex.api("/api/items/", "POST", {"name": "Container smoke gift"}, status=201)
+    photo = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=')
+    boundary = 'wishlist-photo-smoke'
+    upload = (f'--{boundary}\r\nContent-Disposition: form-data; name="photo"; filename="photo.png"\r\n'
+              'Content-Type: image/png\r\n\r\n').encode() + photo + f'\r\n--{boundary}--\r\n'.encode()
+    avatar = alex.api('/api/profile/avatar/', 'PUT', upload,
+                     headers={'Content-Type': f'multipart/form-data; boundary={boundary}'})
+    avatar_url = avatar['avatar_url']
+    photo_status, photo_headers, saved_photo = Session(origin).request(avatar_url)
+    assert photo_status == 200 and photo_headers.get('Content-Type') == 'image/jpeg'
+    assert saved_photo.startswith(b'\xff\xd8'), 'Uploaded image was not normalized to JPEG'
+    item = alex.api("/api/items/", "POST", {"name": "Container smoke gift",
+                    "links": ['https://shop.example/book', 'http://127.0.0.1/private']}, status=201)
+    assert [link['url'] for link in item['links']] == ['https://shop.example/book', 'http://127.0.0.1/private']
+    unavailable = alex.api(f"/api/item-links/{item['links'][1]['id']}/preview/", 'POST', {})
+    assert unavailable['status'] == 'unavailable', 'Private destination must remain a fallback link'
     bought = sam.api(f"/api/items/{item['id']}/purchase/", "PUT", {})
     assert bought["purchases"] == [{"buyer_id": ids["sam"], "buyer_name": "Sam"}]
 
@@ -187,6 +202,9 @@ assert not shutil.which('node') and not shutil.which('npm')
         assert alex.api("/api/session/")["profile"]["id"] == ids["alex"], "Session lost on replacement"
         own = alex.api(f"/api/profiles/{ids['alex']}/items/")
         assert len(own) == 1 and own[0]["id"] == item["id"]
+        assert own[0]['links'] == item['links'], 'Gift links lost on replacement'
+        assert alex.api('/api/session/')['profile']['avatar_url'] == avatar_url, 'Avatar identity lost'
+        assert Session(alex.origin).request(avatar_url)[2] == saved_photo, 'Avatar bytes lost on replacement'
         assert not {"purchases", "can_purchase", "can_undo"}.intersection(own[0]), "Recipient purchase leak"
         other = sam.api(f"/api/profiles/{ids['alex']}/items/")
         assert other[0]["purchases"] == bought["purchases"], "Purchase lost"
@@ -220,7 +238,7 @@ assert not shutil.which('node') and not shutil.which('npm')
         logs = runtime.command("logs", failed).stdout
         assert "Listening at:" not in logs
         runtime.remove(failed)
-    print(f"PASS {runtime.platform}: frontend/assets, CSRF, privacy, volume/session persistence, fail-closed startup, termination")
+    print(f"PASS {runtime.platform}: frontend/assets, CSRF, privacy, photos/links/session persistence, preview fallback, fail-closed startup, termination")
 
 
 def main(argv=None) -> int:

@@ -74,7 +74,7 @@ export function WishlistPage({ owner }: { owner: Profile }) {
         <Avatar profile={owner} large />
         <h1 id="wishlist-title" data-wishlist-heading tabIndex={-1}>{owner.name}’s wishlist</h1>
       </div>
-      {owner.id === profile?.id && <ProfilePhotoEditor key={owner.id} />}
+      {owner.id === profile?.id && <ProfilePhotoEditor key={`photo-${owner.id}`} />}
       <div className="wishlist-toolbar">
         <EventFilter events={events} value={visibleFilter} onChange={setFilter} />
         {owner.id === profile?.id && <button type="button" className="primary-button" onClick={() => setEditingItem('new')}>Add a gift</button>}
@@ -86,7 +86,7 @@ export function WishlistPage({ owner }: { owner: Profile }) {
         <p className="filter-explanation">This occasion also includes gifts marked Anything.</p>
       )}
       {editingItem !== null && owner.id === profile?.id && <ItemForm
-        key={editingItem === 'new' ? 'new' : editingItem.id}
+        key={editingItem === 'new' ? 'new' : `item-${editingItem.id}`}
         item={editingItem === 'new' ? undefined : editingItem}
         events={events}
         eventsReady={!catalogLoading && !eventsError}

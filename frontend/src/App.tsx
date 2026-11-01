@@ -5,6 +5,7 @@ import { IdentityProvider, useIdentity } from './features/identity/IdentityProvi
 import { NamePicker } from './features/identity/NamePicker'
 import { WishlistPage } from './features/wishlists/WishlistPage'
 import { FamilyBrandingProvider, useFamilyBranding } from './features/branding/FamilyBranding'
+import { Avatar } from './components/Avatar'
 
 function AuthenticatedArea({ profile, profiles, onSwitch }: { profile: NonNullable<ReturnType<typeof useIdentity>['profile']>; profiles: ReturnType<typeof useIdentity>['profiles']; onSwitch(): void }) {
   const branding = useFamilyBranding()
@@ -27,7 +28,7 @@ function AuthenticatedArea({ profile, profiles, onSwitch }: { profile: NonNullab
               {profiles.filter((candidate) => candidate.id !== profile.id).map((candidate) => (
                 <button type="button" key={candidate.id} aria-pressed={familyOwnerId === candidate.id}
                   onClick={() => setFamilyOwnerId(candidate.id)}>
-                  View {candidate.name}’s wishlist
+                  <Avatar profile={candidate} /><span>View {candidate.name}’s wishlist</span>
                 </button>
               ))}
               {profiles.length === 1 && <p>No other family wishlists are available.</p>}

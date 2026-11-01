@@ -179,3 +179,16 @@ const itemInput = {
   event_id: null,
   allow_multiple_purchases: false,
 }
+
+it('lets the browser set multipart Content-Type while retaining CSRF', async () => {
+  const { uploadAvatar } = await import('./client')
+  const fetchPhoto = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 1, key: 'alex', name: 'Alex', avatar_url: '/photo' }), { status: 200 }))
+  vi.stubGlobal('fetch', fetchPhoto)
+  document.cookie = 'csrftoken=photo-token'
+  await uploadAvatar(new File(['photo'], 'photo.png', { type: 'image/png' }))
+  const [url, init] = fetchPhoto.mock.calls[0]!
+  expect(url).toBe('/api/profile/avatar/')
+  expect(init.body).toBeInstanceOf(FormData)
+  expect(init.headers.get('Content-Type')).toBeNull()
+  expect(init.headers.get('X-CSRFToken')).toBe('photo-token')
+})

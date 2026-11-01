@@ -1,4 +1,5 @@
 import type { Profile } from '../../api/types'
+import { Avatar } from '../../components/Avatar'
 
 export function NamePicker({
   profiles,
@@ -18,7 +19,7 @@ export function NamePicker({
         <div className="identity-options">
           {profiles.map((profile) => (
             <button key={profile.id} type="button" disabled={pending} onClick={() => void onChoose(profile.id)}>
-              {profile.name}
+              <Avatar profile={profile} /><span>{profile.name}</span>
             </button>
           ))}
         </div>

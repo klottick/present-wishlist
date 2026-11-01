@@ -13,6 +13,7 @@ type IdentityValue = {
   revalidate(): Promise<void>
   profiles: Profile[]
   error: string | null
+  updateProfile(profile: Profile, expectedGeneration: number): void
 }
 
 const IdentityContext = createContext<IdentityValue | null>(null)
@@ -75,6 +76,12 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
   const revalidate = useCallback(async () => {
     await reconcile()
   }, [reconcile])
+
+  const updateProfile = useCallback((updated: Profile, expectedGeneration: number) => {
+    if (!mounted.current || generationRef.current !== expectedGeneration) return
+    setProfile((current) => current?.id === updated.id ? updated : current)
+    setProfiles((current) => current.map((entry) => entry.id === updated.id ? updated : entry))
+  }, [])
 
   const mutateSession = useCallback((
     mutation: () => Promise<unknown>,
@@ -155,8 +162,8 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
     }
   }, [beginGeneration, revalidate])
 
-  const value = useMemo(() => ({ profile, phase, generation, choose, clear, revalidate, profiles, error }),
-    [profile, phase, generation, choose, clear, revalidate, profiles, error])
+  const value = useMemo(() => ({ profile, phase, generation, choose, clear, revalidate, profiles, error, updateProfile }),
+    [profile, phase, generation, choose, clear, revalidate, profiles, error, updateProfile])
   return <IdentityContext.Provider value={value}>{children}</IdentityContext.Provider>
 }
 

@@ -142,7 +142,7 @@ describe('ItemForm', () => {
     await user.click(screen.getByRole('button', { name: /save/i }))
 
     expect(api.updateItem).toHaveBeenCalledWith(4, {
-      name: 'New name', link: '', notes: '', event_id: 3, allow_multiple_purchases: false,
+      name: 'New name', links: [], notes: '', event_id: 3, allow_multiple_purchases: false,
     })
     expect(onSaved).toHaveBeenCalledOnce()
   })
@@ -164,7 +164,7 @@ describe('ItemForm', () => {
     await userEvent.click(screen.getByRole('button', { name: /save/i }))
 
     expect(api.updateItem).toHaveBeenCalledWith(4, {
-      name: 'Old gift', link: '', notes: 'Keep these notes', event_id: 1, allow_multiple_purchases: false,
+      name: 'Old gift', links: [], notes: 'Keep these notes', event_id: 1, allow_multiple_purchases: false,
     })
     expect(onSaved).toHaveBeenCalledOnce()
   })
@@ -188,7 +188,7 @@ describe('ItemForm', () => {
     await userEvent.click(screen.getByRole('button', { name: /save/i }))
 
     expect(api.createItem).toHaveBeenCalledWith({
-      name: 'Keep this gift', link: '', notes: 'Keep these notes', event_id: null, allow_multiple_purchases: false,
+      name: 'Keep this gift', links: [], notes: 'Keep these notes', event_id: null, allow_multiple_purchases: false,
     })
     expect(onSaved).toHaveBeenCalledOnce()
   })
@@ -209,3 +209,29 @@ describe('ItemForm', () => {
     expect(api.getSession).toHaveBeenCalledOnce()
   })
 })
+
+ it('adds and removes shopping links and submits only nonblank trimmed URLs', async () => {
+    api.createItem.mockResolvedValue(item)
+    renderForm({ events: [], onSaved: vi.fn(), onCancel: vi.fn() })
+    const user = userEvent.setup()
+    await user.type(screen.getByRole('textbox', { name: /gift name/i }), 'Book')
+    await user.type(screen.getByRole('textbox', { name: /link 1/i }), 'https://example.com/a')
+    await user.click(screen.getByRole('button', { name: 'Add another link' }))
+    await user.type(screen.getByRole('textbox', { name: /link 2/i }), 'https://example.com/b')
+    await user.click(screen.getByRole('button', { name: 'Remove link 1' }))
+    await user.click(screen.getByRole('button', { name: 'Save gift' }))
+    expect(api.createItem).toHaveBeenCalledWith({ name: 'Book', links: ['https://example.com/b'], notes: '', event_id: null, allow_multiple_purchases: false })
+  })
+
+it('associates server errors with the visible link row after blank inputs are omitted', async () => {
+    api.createItem.mockRejectedValue(new ApiError(400, { code: 'validation_error', message: 'Invalid request.', fields: { 'links.0': ['This destination is unavailable.'] } }))
+    renderForm({ events: [], onSaved: vi.fn(), onCancel: vi.fn() })
+    const user = userEvent.setup()
+    await user.type(screen.getByRole('textbox', { name: /gift name/i }), 'Book')
+    await user.click(screen.getByRole('button', { name: 'Add another link' }))
+    await user.type(screen.getByRole('textbox', { name: /link 2/i }), 'https://example.com/a')
+    await user.click(screen.getByRole('button', { name: 'Save gift' }))
+    await screen.findByText('This destination is unavailable.')
+    expect(screen.getByRole('textbox', { name: /link 2/i })).toHaveAccessibleDescription('This destination is unavailable.')
+    expect(screen.getByRole('textbox', { name: /link 1/i })).not.toHaveAttribute('aria-invalid')
+  })

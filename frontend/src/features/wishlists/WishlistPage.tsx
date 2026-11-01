@@ -10,6 +10,8 @@ import { useWishlist } from './useWishlist'
 import type { OwnerItem } from '../../api/types'
 import { ItemForm } from '../items/ItemForm'
 import { DeleteItemDialog } from '../items/DeleteItemDialog'
+import { Avatar } from '../../components/Avatar'
+import { ProfilePhotoEditor } from '../identity/ProfilePhotoEditor'
 
 export function WishlistPage({ owner }: { owner: Profile }) {
   const { generation, phase, profile } = useIdentity()
@@ -69,9 +71,10 @@ export function WishlistPage({ owner }: { owner: Profile }) {
   return (
     <section ref={page} className="wishlist-page" aria-labelledby="wishlist-title">
       <div className="wishlist-intro">
-        <p className="eyebrow">{owner.id === profile?.id ? 'Your list' : 'Family list'}</p>
+        <Avatar profile={owner} large />
         <h1 id="wishlist-title" data-wishlist-heading tabIndex={-1}>{owner.name}’s wishlist</h1>
       </div>
+      {owner.id === profile?.id && <ProfilePhotoEditor key={owner.id} />}
       <div className="wishlist-toolbar">
         <EventFilter events={events} value={visibleFilter} onChange={setFilter} />
         {owner.id === profile?.id && <button type="button" className="primary-button" onClick={() => setEditingItem('new')}>Add a gift</button>}
@@ -105,7 +108,7 @@ export function WishlistPage({ owner }: { owner: Profile }) {
       {!eventsError && <AsyncState loading={busy} error={wishlist.error?.failure.message} onRetry={wishlist.refresh}>
         {wishlist.items.length === 0
           ? <div className="empty-state"><h2>No gifts yet</h2><p>This wishlist is empty for this selection.</p></div>
-           : <div className="gift-list">{wishlist.items.map((item) => <GiftCard key={item.id} item={item}>
+           : <div className="gift-list">{wishlist.items.map((item) => <GiftCard key={item.id} item={item} previewScope={generation}>
               {item.is_owner && <div className="owner-item-actions">
                 <button type="button" className="secondary-button" onClick={() => setEditingItem(item)}>Edit gift</button>
                 <button type="button" className="secondary-button" data-delete-item-id={item.id} onClick={() => setDeletingItem(item)}>Delete gift</button>

@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getLinkPreview } from '../../api/client'
 import type { GiftLink, LinkMetadata } from '../../api/types'
-
-const inFlight = new Map<string, Promise<LinkMetadata>>()
+import { subscribePreview } from './previewRequests'
 
 export function safeExternalLink(value: string): string | null {
   try {
@@ -19,14 +17,9 @@ export function LinkPreview({ link, scope = 0 }: { link: GiftLink; scope?: numbe
   useEffect(() => {
     if (!href) return
     let active = true
-    let request = inFlight.get(key)
-    if (!request) {
-      request = getLinkPreview(link.id)
-      inFlight.set(key, request)
-      void request.finally(() => { if (inFlight.get(key) === request) inFlight.delete(key) }).catch(() => undefined)
-    }
-    request.then((data) => { if (active) setResult({ key, data }) }).catch(() => undefined)
-    return () => { active = false }
+    const request = subscribePreview(key, link.id)
+    request.promise.then((data) => { if (active) setResult({ key, data }) }).catch(() => undefined)
+    return () => { active = false; request.release() }
   }, [href, key, link.id])
   if (!href) return null
   const metadata = result?.key === key ? result.data : null

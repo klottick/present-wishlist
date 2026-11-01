@@ -37,3 +37,16 @@ it('ignores a preview response from the previous identity generation', async () 
   await act(async () => { resolve({ title: 'Old title', image_url: null, status: 'ready' }) })
   expect(screen.queryByText('Old title')).not.toBeInTheDocument()
 })
+
+
+it('loads at most two previews concurrently and eventually processes the remaining cards', async () => {
+  const pending: Array<(data: unknown) => void> = []
+  api.getLinkPreview.mockImplementation(() => new Promise((done) => { pending.push(done) }))
+  const view = render(<>{[101, 102, 103].map((id) => <LinkPreview key={id} link={{ id, url: `https://shop.example/${id}` }} scope={8} />)}</>)
+  expect(pending).toHaveLength(2)
+  await act(async () => { pending[0]({ title: 'First book', image_url: null, status: 'ready' }) })
+  expect(pending).toHaveLength(3)
+  await act(async () => { pending[1]({ title: 'Second book', image_url: null, status: 'ready' }); pending[2]({ title: 'Third book', image_url: null, status: 'ready' }) })
+  expect(await screen.findByText('Third book')).toBeVisible()
+  view.unmount()
+})

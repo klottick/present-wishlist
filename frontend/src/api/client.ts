@@ -92,8 +92,8 @@ export function removeAvatar(): Promise<Profile> {
   return request('/api/profile/avatar/', { method: 'DELETE' })
 }
 
-export function getLinkPreview(id: number): Promise<LinkMetadata> {
-  return request(`/api/item-links/${id}/preview/`, { method: 'POST', body: '{}' })
+export function getLinkPreview(id: number, signal?: AbortSignal): Promise<LinkMetadata> {
+  return request(`/api/item-links/${id}/preview/`, { method: 'POST', body: '{}', signal })
 }
 
 export function getEvents(signal?: AbortSignal): Promise<EventOption[]> {

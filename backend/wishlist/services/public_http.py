@@ -107,8 +107,11 @@ class PinnedConnection(http.client.HTTPConnection):
                 address = (*address, 0, 0)
             raw.connect(address)
             if self.target.scheme == 'https':
-                self.sock = ssl.create_default_context().wrap_socket(raw, server_hostname=self.target.hostname)
+                self.sock = ssl.create_default_context().wrap_socket(
+                    raw, server_hostname=self.target.hostname, do_handshake_on_connect=False,
+                )
                 self._active_socket = self.sock
+                self.sock.do_handshake()
         except Exception:
             raw.close()
             self.sock = None

@@ -143,7 +143,9 @@ editing links preserves purchase records.
 After a gift is saved, its links load compact previews with page titles,
 descriptions, and thumbnails where provided. The server makes bounded public
 page requests and caches successful metadata for seven days, or an unavailable
-result for one hour. Saving a gift never waits for this work. Private-network
+result for one hour, with at most 512 cached URLs. Preview fetches use at most two server request threads, reserving capacity for
+normal app actions. The browser loads at most two previews at a time. Saving a
+gift never waits for this work. Private-network
 URLs, nonstandard web ports, inaccessible pages, and sites requiring scripts or
 blocking automated requests remain ordinary clickable links. Prices and stock
 are not tracked.

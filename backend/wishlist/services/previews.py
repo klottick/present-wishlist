@@ -10,8 +10,11 @@ from django.utils import timezone
 
 from wishlist.models import LinkPreviewCache
 from wishlist.services.public_http import FetchError, fetch_html, public_target
+from wishlist.services.transactions import atomic_mutation
 
 _locks = [threading.Lock() for _ in range(64)]
+_preview_slots = threading.BoundedSemaphore(2)
+MAX_CACHE_ENTRIES = 512
 
 
 class MetadataParser(HTMLParser):
@@ -52,16 +55,22 @@ def _payload(url, cache=None):
 
 def preview_for_link(link) -> dict:
     url = link.url
+    cached = LinkPreviewCache.objects.filter(url=url).first()
+    if _fresh(cached):
+        return _payload(url, cached)
+    # The release server has four request threads. Leave two available for
+    # identity, gift and purchase requests even when destinations are slow.
+    if not _preview_slots.acquire(blocking=False):
+        return _payload(url, cached)
     deadline = time.monotonic() + 8
     lock = _locks[hash(url) % len(_locks)]
-    if not lock.acquire(timeout=8):
-        return _payload(url)
+    if not lock.acquire(blocking=False):
+        _preview_slots.release()
+        return _payload(url, cached)
     try:
         cached = LinkPreviewCache.objects.filter(url=url).first()
-        if cached:
-            lifetime = timedelta(days=7) if cached.succeeded else timedelta(hours=1)
-            if timezone.now() - cached.attempted_at < lifetime:
-                return _payload(url, cached)
+        if _fresh(cached):
+            return _payload(url, cached)
         values = {'title': '', 'description': '', 'image_url': '', 'succeeded': False}
         try:
             final_url, html = fetch_html(url, deadline=deadline)
@@ -71,16 +80,29 @@ def preview_for_link(link) -> dict:
             values['description'] = (parser.meta.get('og:description') or parser.meta.get('description', '')).strip()[:500]
             image = parser.meta.get('og:image', '').strip()
             if image:
-                image = urljoin(final_url, image)
                 try:
+                    image = urljoin(final_url, image)
                     public_target(image, deadline=deadline)
                     values['image_url'] = image
-                except FetchError:
+                except ValueError:
                     pass
             values['succeeded'] = bool(values['title'] or values['description'] or values['image_url'])
         except FetchError:
             pass
-        cached, _ = LinkPreviewCache.objects.update_or_create(url=url, defaults=values)
+        with atomic_mutation():
+            cached, _ = LinkPreviewCache.objects.update_or_create(url=url, defaults=values)
+            expired = list(LinkPreviewCache.objects.order_by('-attempted_at', '-pk')
+                .values_list('pk', flat=True)[MAX_CACHE_ENTRIES:])
+            if expired:
+                LinkPreviewCache.objects.filter(pk__in=expired).delete()
         return _payload(url, cached)
     finally:
         lock.release()
+        _preview_slots.release()
+
+
+def _fresh(cache) -> bool:
+    if cache is None:
+        return False
+    lifetime = timedelta(days=7) if cache.succeeded else timedelta(hours=1)
+    return timezone.now() - cache.attempted_at < lifetime

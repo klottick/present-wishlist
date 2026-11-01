@@ -5,7 +5,7 @@ import socket
 from unittest.mock import MagicMock, patch
 
 from django.apps import apps
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TransactionTestCase
 from django.utils import timezone
 
 from wishlist.tests.helpers import WishlistTestCase
@@ -72,6 +72,26 @@ class PreviewTests(WishlistTestCase):
         from wishlist.tests.helpers import select_profile
         select_profile(self.client, self.buyer)
         self.assertEqual(self.preview().status_code, 404)
+
+    def test_malformed_thumbnail_preserves_title_and_caches_preview(self):
+        html = '<meta property="og:title" content="A useful title"><meta property="og:image" content="http://[">'
+        with patch('wishlist.services.previews.fetch_html', return_value=('https://example.com/', html)):
+            response = self.preview()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['title'], 'A useful title')
+        self.assertIsNone(response.json()['image_url'])
+        with patch('wishlist.services.previews.fetch_html', side_effect=AssertionError('must use cache')):
+            self.assertEqual(self.preview().json()['title'], 'A useful title')
+
+    def test_cache_prunes_oldest_entries_when_at_capacity(self):
+        Cache = apps.get_model('wishlist', 'LinkPreviewCache')
+        for index in range(5):
+            Cache.objects.create(url=f'https://example.com/old-{index}')
+        with patch('wishlist.services.previews.MAX_CACHE_ENTRIES', 3, create=True), \
+             patch('wishlist.services.previews.fetch_html', return_value=('https://example.com/', '<title>Current</title>')):
+            self.assertEqual(self.preview().json()['title'], 'Current')
+        self.assertLessEqual(Cache.objects.count(), 3)
+        self.assertTrue(Cache.objects.filter(url='https://example.com/book').exists())
 
 
 class PublicHTTPTests(SimpleTestCase):
@@ -146,3 +166,64 @@ class PublicHTTPTests(SimpleTestCase):
         connection.sock = None
         connection.expire()
         self.assertTrue(raw.shutdown.called)
+
+    def test_tls_handshake_can_be_interrupted_by_deadline(self):
+        from wishlist.services.public_http import PinnedConnection, public_target
+        with patch('wishlist.services.public_http.socket.getaddrinfo', return_value=dns_result()):
+            target = public_target('https://example.com/')
+        raw = MagicMock()
+        secure = MagicMock()
+        context = MagicMock()
+        context.wrap_socket.return_value = secure
+        connection = PinnedConnection(target, timeout=2)
+        secure.do_handshake.side_effect = connection.expire
+        with patch('wishlist.services.public_http.socket.socket', return_value=raw), \
+             patch('wishlist.services.public_http.ssl.create_default_context', return_value=context):
+            connection.connect()
+        self.assertTrue(secure.shutdown.called, 'Deadline must see the TLS socket during handshake')
+
+
+class PreviewCapacityTests(TransactionTestCase):
+    def test_preview_saturation_leaves_request_threads_free(self):
+        from concurrent.futures import ThreadPoolExecutor
+        import threading
+        from django.db import close_old_connections
+        from wishlist.models import WishlistItemLink
+        from wishlist.services.items import create_item
+        from wishlist.services.previews import preview_for_link
+        from wishlist.tests.helpers import make_profile
+        owner = make_profile('capacity-owner')
+        item = create_item(owner, {'name': 'Book', 'links': [f'https://example.com/{i}' for i in range(3)]})
+        links = list(WishlistItemLink.objects.filter(item=item))
+        started = threading.Event()
+        release = threading.Event()
+        guard = threading.Lock()
+        count = 0
+        def held_fetch(url, **kwargs):
+            nonlocal count
+            with guard:
+                count += 1
+                if count > 2:
+                    raise AssertionError('Preview fetching exhausted normal request capacity')
+                if count == 2:
+                    started.set()
+            if not release.wait(timeout=3):
+                raise AssertionError('Test did not release fetches')
+            return url, '<title>Book</title>'
+        def worker(link):
+            close_old_connections()
+            try:
+                return preview_for_link(link)
+            finally:
+                close_old_connections()
+        with patch('wishlist.services.previews.fetch_html', side_effect=held_fetch), ThreadPoolExecutor(max_workers=3) as pool:
+            jobs = [pool.submit(worker, link) for link in links[:2]]
+            try:
+                self.assertTrue(started.wait(timeout=2))
+                fallback = pool.submit(worker, links[2]).result(timeout=.5)
+                self.assertEqual(fallback['status'], 'unavailable')
+                duplicate = pool.submit(worker, links[0]).result(timeout=.5)
+                self.assertEqual(duplicate['status'], 'unavailable')
+            finally:
+                release.set()
+            self.assertTrue(all(job.result(timeout=3)['status'] == 'ready' for job in jobs))

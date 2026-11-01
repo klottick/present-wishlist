@@ -6,6 +6,8 @@ class FamilyProfile(models.Model):
     config_key = models.CharField(max_length=80, unique=True)
     name = models.CharField(max_length=80)
     is_active = models.BooleanField(default=True)
+    avatar_data = models.BinaryField(default=bytes, blank=True)
+    avatar_version = models.CharField(max_length=32, blank=True, default="")
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -50,6 +52,16 @@ class WishlistItem(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class WishlistItemLink(models.Model):
+    item = models.ForeignKey(WishlistItem, on_delete=models.CASCADE, related_name="links")
+    url = models.CharField(max_length=2000)
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ("position", "id")
+        constraints = [models.UniqueConstraint(fields=("item", "url"), name="unique_url_per_item")]
 
 
 class Purchase(models.Model):

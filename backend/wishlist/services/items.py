@@ -3,12 +3,12 @@ from django.core.validators import URLValidator
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
-from wishlist.models import Event, FamilyProfile, WishlistItem
+from wishlist.models import Event, FamilyProfile, WishlistItem, WishlistItemLink
 from wishlist.services.transactions import atomic_mutation
 
 
 _FIELD_LIMITS = {"name": 200, "link": 2000, "price": 80, "notes": 5000}
-_INPUT_FIELDS = {*_FIELD_LIMITS, "event_id", "allow_multiple_purchases"}
+_INPUT_FIELDS = {*_FIELD_LIMITS, "links", "event_id", "allow_multiple_purchases"}
 _url_validator = URLValidator(schemes=("http", "https"))
 
 
@@ -24,10 +24,40 @@ def validate_item_input(data: dict, *, instance: WishlistItem | None = None, par
         errors["name"] = ["This field is required."]
 
     validated = {}
+    if "link" in data and "links" in data:
+        errors["links"] = ["Use links or link, not both."]
+    if "links" in data:
+        urls = data["links"]
+        cleaned = []
+        if not isinstance(urls, list):
+            errors["links"] = ["Must be a list of URLs."]
+        else:
+            for index, value in enumerate(urls):
+                field = f"links.{index}"
+                if not isinstance(value, str):
+                    errors[field] = ["Must be a URL string."]
+                    continue
+                value = value.strip()
+                if not value:
+                    continue
+                if len(value) > 2000:
+                    errors[field] = ["Must be 2000 characters or fewer."]
+                else:
+                    try:
+                        _url_validator(value)
+                    except DjangoValidationError:
+                        errors[field] = ["Enter a valid HTTP or HTTPS URL."]
+                if value in cleaned:
+                    errors[field] = ["This link is already included."]
+                cleaned.append(value)
+            if len(cleaned) > 10:
+                errors["links"] = ["Add up to 10 links per gift."]
+            validated["links"] = cleaned
+            validated["link"] = cleaned[0] if cleaned else ""
     for field, limit in _FIELD_LIMITS.items():
         if field not in data:
             if not partial and field != "name":
-                validated[field] = ""
+                validated.setdefault(field, "")
             continue
         value = data[field]
         if not isinstance(value, str):
@@ -44,6 +74,8 @@ def validate_item_input(data: dict, *, instance: WishlistItem | None = None, par
             except DjangoValidationError:
                 errors[field] = ["Enter a valid HTTP or HTTPS URL."]
         validated[field] = value
+        if field == "link" and "links" not in data:
+            validated["links"] = [value] if value else []
 
     if "allow_multiple_purchases" in data:
         value = data["allow_multiple_purchases"]
@@ -81,7 +113,10 @@ def validate_item_input(data: dict, *, instance: WishlistItem | None = None, par
 def create_item(owner: FamilyProfile, data: dict) -> WishlistItem:
     with atomic_mutation():
         validated = validate_item_input(data)
-        return WishlistItem.objects.create(owner=owner, **validated)
+        links = validated.pop("links", [])
+        item = WishlistItem.objects.create(owner=owner, **validated)
+        _replace_links(item, links)
+        return item
 
 
 def update_item(item_id: int, actor: FamilyProfile, data: dict) -> WishlistItem:
@@ -90,11 +125,27 @@ def update_item(item_id: int, actor: FamilyProfile, data: dict) -> WishlistItem:
         if item.owner_id != actor.pk:
             raise PermissionDenied("You may only edit your own wishlist items.")
         validated = validate_item_input(data, instance=item, partial=True)
+        links = validated.pop("links", None)
         for field, value in validated.items():
             setattr(item, field, value)
         if validated:
             item.save(update_fields=(*validated.keys(), "updated_at"))
+        if links is not None:
+            _replace_links(item, links)
         return item
+
+
+def _replace_links(item: WishlistItem, urls: list[str]) -> None:
+    existing = {link.url: link for link in item.links.all()}
+    item.links.exclude(url__in=urls).delete()
+    for position, url in enumerate(urls):
+        if url in existing:
+            link = existing[url]
+            if link.position != position:
+                link.position = position
+                link.save(update_fields=("position",))
+        else:
+            WishlistItemLink.objects.create(item=item, url=url, position=position)
 
 
 def delete_item(item_id: int, actor: FamilyProfile) -> None:

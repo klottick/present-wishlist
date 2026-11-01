@@ -14,7 +14,7 @@ class SharedHelperTests(TestCase):
         self.assertIn("csrftoken", client.cookies)
         self.assertEqual(client.session["family_profile_id"], profile.pk)
         self.assertEqual(client.get("/api/session/").json(), {
-            "profile": {"id": profile.pk, "key": "alex", "name": "Alex"}
+            "profile": {"id": profile.pk, "key": "alex", "name": "Alex", "avatar_url": None}
         })
         self.assertNotIn("_auth_user_id", client.session)
 

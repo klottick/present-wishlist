@@ -1,5 +1,9 @@
 def serialize_profile(profile):
-    return {"id": profile.pk, "key": profile.config_key, "name": profile.name}
+    return {
+        "id": profile.pk, "key": profile.config_key, "name": profile.name,
+        "avatar_url": f"/api/profiles/{profile.pk}/avatar/?v={profile.avatar_version}"
+        if profile.avatar_version else None,
+    }
 
 
 def serialize_event(event):
@@ -17,6 +21,7 @@ def serialize_item(item, viewer):
         "owner_id": item.owner_id,
         "name": item.name,
         "link": item.link,
+        "links": [{"id": link.pk, "url": link.url} for link in item.links.all()],
         "price": item.price,
         "notes": item.notes,
         "event": serialize_event(item.event) if item.event_id else None,

@@ -152,5 +152,7 @@ are not tracked.
 
 Preview text is rendered as text. Thumbnail images load from the source website
 without a referrer, so viewing an image can contact that external image host.
-Broken images are hidden while the destination remains usable. No preview
+Large pages are parsed from their first 1 MiB. Pages with named product images,
+including Amazon product pages, can show those images when social metadata is
+missing. Broken images are hidden while the destination remains usable. No preview
 service account or API key is required.

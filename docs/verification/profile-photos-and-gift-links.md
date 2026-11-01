@@ -93,3 +93,37 @@ Playwright retry: 163 backend tests, 102 frontend tests, both browser viewport
 projects (13.2s), dependency checks, lint and build. The final linux/amd64 image
 also passed the container persistence/CSRF/privacy smoke. No findings remain
 unfixed; external preview coverage remains best effort.
+
+## Amazon image regression fix — 2026-11-01
+
+A configured Amazon product returned a page larger than 1 MiB and omitted
+Open Graph image metadata. The previous fetcher discarded the whole page when
+it exceeded the body limit, and the extractor did not recognize the named
+product image. This reproduced the user's missing-image report.
+
+The fetcher now returns only the first 1 MiB for parsing, including when the
+advertised Content-Length is larger. It never downloads beyond that bound.
+The parser retains Open Graph priority and falls back to explicitly named
+product images (`landingImage`, `imgBlkFront`, `ebooksImgBlkFront`), trying the
+high-resolution attribute and then the normal source. Every candidate keeps
+the existing public-address validation; arbitrary page images are not selected.
+
+Regression tests were observed failing and then passing. All 167 backend tests
+passed. The rebuilt linux/amd64 image passed the container persistence, CSRF,
+privacy and preview fallback smoke. An independent read-only review approved
+the narrow fix without Critical or Important findings; it additionally checked
+truncated HTML parsing, including incomplete tags and script content. Its
+optional suggestion to add another incomplete-tag fixture was not needed for
+the validated fix.
+
+Deployed image: `present-wishlist-local:amazon-images-20261101`. The affected
+cached failure was cleared, and the existing live product card loaded a visible
+image with natural dimensions 1134×1500 in the browser. The source URL and all
+core data remained unchanged. No sample gift or photo was created.
+
+The first deployment attempt automatically rolled back because its cache-refresh
+command lacked the backend working directory. The corrected deployment and
+cache refresh completed successfully. A fresh consistent database backup and
+previous image/configuration are stored privately at:
+
+`/home/klottick/.local/state/present-wishlist/backups/20261101T170322Z-before-amazon-image-fix`

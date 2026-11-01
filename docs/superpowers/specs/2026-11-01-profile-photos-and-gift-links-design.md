@@ -1,18 +1,18 @@
 # Profile photos and multiple gift links
 
 Date: 2026-11-01
-Status: Approved by the user on 2026-11-01; implementation in progress.
+Status: Approved by the user on 2026-11-01; implemented and deployed locally.
 
 ## Intent and confirmed scope
 
-Make the Lottick family wishlist easier to recognize and shop from. The user
+Make the family wishlist easier to recognize and shop from. The user
 confirmed one person per row, personal photo uploads, multiple shopping links
 per gift, and compact preview cards with an ordinary-link fallback.
 
 Keep the existing React/TypeScript frontend, Django API, SQLite database,
 green visual styling, and trust-based selection of YAML-managed profiles.
-Kadan, Samantha, Nina, Adam, Lydia, Winnie, and Antrim remain configured locally;
-their names and photos are not shipped as demo data.
+Existing family names remain configured locally; personal names and photos are
+not shipped as demo data.
 
 ## Approaches
 

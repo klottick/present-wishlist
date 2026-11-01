@@ -65,6 +65,31 @@ zero tests.
 
 ## Deployment
 
-Pending final review fixes and a fresh verification run. The running installation
-has two gifts, one purchase mark and one existing single URL; these must remain
-unchanged after migration. Local family YAML and secrets stay outside git.
+Deployed locally on 2026-11-01 at `http://localhost:8080` using
+`present-wishlist-local:photos-links-20261101`. The container is healthy and serves the
+compiled photo editor and multi-link UI. The local Compose override selects this
+image and retains the existing host port and data volume.
+
+The original core tables were hashed before upgrading and checked afterward:
+two gifts, one purchase mark, profile/event identities and all original core
+values are unchanged. The one existing single URL became an ordered link.
+The live family branding and seven configured names were checked through the
+public APIs; a live phone-width browser check confirmed one person per row and
+the profile-photo control. No sample gift or photo was added to live data.
+
+Before startup migrations, the app was stopped briefly and SQLite's backup API
+created a consistent private snapshot. The backup passed `PRAGMA integrity_check`.
+The backup directory also contains the previous image identity and local config
+files for recovery:
+
+`/home/klottick/.local/state/present-wishlist/backups/20261101T161216Z-before-photos-links`
+
+Family YAML, the local Compose override, database snapshots and secrets remain
+outside git. Source changes are retained on `feature/profile-photos-links`;
+nothing was pushed or merged into main.
+
+The final complete `bash scripts/verify.sh` run passed after the isolated
+Playwright retry: 163 backend tests, 102 frontend tests, both browser viewport
+projects (13.2s), dependency checks, lint and build. The final linux/amd64 image
+also passed the container persistence/CSRF/privacy smoke. No findings remain
+unfixed; external preview coverage remains best effort.

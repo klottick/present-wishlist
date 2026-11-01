@@ -70,9 +70,9 @@
 
 **Interfaces:** A disposable SQLite database and fixture family config support all browser writes. Local image uses existing Dockerfile and production entrypoint. Live deployment retains the original volume and config.
 
-- [ ] Add and run an integrated browser flow for one-row people selection, photo upload/removal, multi-link save/edit, preview fallback, and purchase behavior at desktop/phone widths; observe failures before finishing any missing integration code.
-- [ ] Run full backend/frontend verification, lint/build, migration drift check, and build a local Docker image. Smoke-test startup/migration and image persistence against a disposable volume.
-- [ ] Run one independent whole-change code review; fix important findings with regression tests and rerun the affected checks plus full suite.
-- [ ] Document behavior and actual verification results; commit completed source changes. Leave the feature branch reviewable and do not push or merge.
-- [ ] Back up live SQLite consistently, record current image, point the local Compose override at the tested image, recreate with existing volume, and verify health, family names, existing item/link counts, and image endpoints without adding live sample data.
-- [ ] Record deployment and backup locations, then report the live URL and material preview limitations.
+- [x] Add and run an integrated browser flow for one-row people selection, photo upload/removal, multi-link save/edit, preview fallback, and purchase behavior at desktop/phone widths; observe failures before finishing any missing integration code.
+- [x] Run full backend/frontend verification, lint/build, migration drift check, and build a local Docker image. Smoke-test startup/migration and image persistence against a disposable volume.
+- [x] Run one independent whole-change code review; fix important findings with regression tests and rerun the affected checks plus full suite.
+- [x] Document behavior and actual verification results; commit completed source changes. Leave the feature branch reviewable and do not push or merge.
+- [x] Back up live SQLite consistently, record current image, point the local Compose override at the tested image, recreate with existing volume, and verify health, family names, existing item/link counts, and image endpoints without adding live sample data.
+- [x] Record deployment and backup locations, then report the live URL and material preview limitations.

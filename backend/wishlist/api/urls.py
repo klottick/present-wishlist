@@ -6,6 +6,7 @@ from wishlist.api.items import ItemCreateView, ItemDetailView, ItemListView
 from wishlist.api.purchases import PurchaseView
 from wishlist.api.session import SessionView
 from wishlist.api.avatars import AvatarView, avatar_image
+from wishlist.api.previews import LinkPreviewView
 
 
 urlpatterns = [
@@ -13,6 +14,7 @@ urlpatterns = [
     path("session/", SessionView.as_view(), name="api-session"),
     path("profiles/", ProfilesView.as_view(), name="api-profiles"),
     path("profile/avatar/", AvatarView.as_view(), name="api-avatar"),
+    path("item-links/<int:link_id>/preview/", LinkPreviewView.as_view(), name="api-link-preview"),
     path("profiles/<int:profile_id>/avatar/", avatar_image, name="api-avatar-image"),
     path("events/", EventsView.as_view(), name="api-events"),
     path("items/", ItemCreateView.as_view(), name="api-item-create"),

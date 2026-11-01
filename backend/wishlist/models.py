@@ -79,3 +79,12 @@ class Purchase(models.Model):
                 fields=("item", "buyer"), name="unique_buyer_per_item"
             )
         ]
+
+
+class LinkPreviewCache(models.Model):
+    url = models.CharField(max_length=2000, unique=True)
+    title = models.CharField(max_length=300, blank=True, default="")
+    description = models.CharField(max_length=500, blank=True, default="")
+    image_url = models.CharField(max_length=2000, blank=True, default="")
+    succeeded = models.BooleanField(default=False)
+    attempted_at = models.DateTimeField(auto_now=True)

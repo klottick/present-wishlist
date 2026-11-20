@@ -48,7 +48,7 @@ Other family members can see purchase marks and coordinate their own purchases.
 
 ## Quick start
 
-Version `0.1.2` adds optional family branding to the updated interface and safe demo-data commands.
+Version `0.1.3` adds profile photos, multiple links per gift with previews, and Amazon product images.
 For source-based development, follow
 [development setup](docs/development.md#run-the-application).
 
@@ -56,7 +56,7 @@ Install Docker Engine with Compose, or Docker Desktop in **Linux-container mode*
 Images support Linux `amd64` and `arm64`; ARM requires a 64-bit OS. Python, Node.js
 and a source checkout are not required. Windows and macOS use Docker's Linux VM.
 
-1. Open the [v0.1.2 release](https://github.com/klottick/present-wishlist/releases/tag/v0.1.2)
+1. Open the [v0.1.3 release](https://github.com/klottick/present-wishlist/releases/tag/v0.1.3)
    and download its attached `compose.yaml`, `family.example.yaml` and
    `default.env.example` into a new directory. Use these assets, not the source
    archives. GitHub renames the uploaded `.env.example` to `default.env.example`.

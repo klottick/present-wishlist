@@ -4,13 +4,15 @@ import type { EventOption, ItemInput, OwnerItem } from '../../api/types'
 import { useIdentity } from '../identity/IdentityProvider'
 
 type Props = { item?: OwnerItem; events: EventOption[]; eventsReady?: boolean; onSaved: () => void; onCancel: () => void }
-type Draft = Omit<ItemInput, 'event_id' | 'price'> & { event_id: number | null }
+type Draft = { name: string; links: string[]; notes: string; event_id: number | null; allow_multiple_purchases: boolean }
 
 export function ItemForm({ item, events, eventsReady = true, onSaved, onCancel }: Props) {
   const errorId = useId()
   const { generation, phase, revalidate } = useIdentity()
   const [draft, setDraft] = useState<Draft>(() => ({
-    name: item?.name ?? '', link: item?.link ?? '', notes: item?.notes ?? '',
+    name: item?.name ?? '',
+    links: item?.links?.length ? item.links.map((link) => link.url) : [item?.link ?? ''],
+    notes: item?.notes ?? '',
     event_id: item?.event?.id ?? null, allow_multiple_purchases: item?.allow_multiple_purchases ?? false,
   }))
   const [selectedEvent, setSelectedEvent] = useState<EventOption | null>(() => item?.event ?? null)
@@ -29,7 +31,9 @@ export function ItemForm({ item, events, eventsReady = true, onSaved, onCancel }
 
   const change = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }))
-    setFieldErrors((current) => ({ ...current, [key]: [] }))
+    setFieldErrors((current) => key === 'links'
+      ? Object.fromEntries(Object.entries(current).filter(([field]) => field !== 'link' && field !== 'links' && !field.startsWith('links.')))
+      : { ...current, [key]: [] })
   }
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -41,7 +45,7 @@ export function ItemForm({ item, events, eventsReady = true, onSaved, onCancel }
     setFieldErrors({})
     const requestGeneration = scope.current.generation
     try {
-      const payload: ItemInput = { ...draft }
+      const payload: ItemInput = { ...draft, links: draft.links.map((url) => url.trim()).filter(Boolean) }
       if (item) await updateItem(item.id, payload)
       else await createItem(payload)
       if (!mounted.current || scope.current.generation !== requestGeneration || scope.current.phase !== 'ready') return
@@ -53,7 +57,12 @@ export function ItemForm({ item, events, eventsReady = true, onSaved, onCancel }
         return
       }
       if (reason instanceof ApiError) {
-        setFieldErrors(reason.failure.fields ?? {})
+        const submittedRows = draft.links.map((url, index) => ({ url, index })).filter(({ url }) => url.trim())
+        setFieldErrors(Object.fromEntries(Object.entries(reason.failure.fields ?? {}).map(([field, messages]) => {
+          const match = /^links\.(\d+)$/.exec(field)
+          const row = match ? submittedRows[Number(match[1])] : undefined
+          return [row ? `links.${row.index}` : field, messages]
+        })))
         setError(reason.failure.message)
       } else setError('The gift could not be saved. Please try again.')
     } finally {
@@ -84,8 +93,27 @@ export function ItemForm({ item, events, eventsReady = true, onSaved, onCancel }
         <input autoFocus required maxLength={200} value={draft.name} onChange={(event) => change('name', event.target.value)} aria-invalid={fieldErrors.name?.length ? true : undefined} aria-describedby={fieldErrors.name?.length ? `${errorId}-name-error` : undefined} />
       </label>
       {fieldErrorGroup('name', fieldErrors.name ?? [])}
-      <label>Link <span className="optional-label">(optional)</span><input type="url" maxLength={2000} value={draft.link} onChange={(event) => change('link', event.target.value)} aria-invalid={fieldErrors.link?.length ? true : undefined} aria-describedby={fieldErrors.link?.length ? `${errorId}-link-error` : undefined} /></label>
-      {fieldErrorGroup('link', fieldErrors.link ?? [])}
+      <fieldset className="gift-link-fields">
+        <legend>Shopping links <span className="optional-label">(optional)</span></legend>
+        {draft.links.map((url, index) => {
+          const field = `links.${index}`
+          const errors = [...(fieldErrors[field] ?? []), ...(index === 0 ? fieldErrors.link ?? [] : [])]
+          return <div className="gift-link-field" key={index}>
+            <div className="gift-link-input">
+              <label>Link {index + 1}<input type="url" maxLength={2000} value={url} placeholder="https://"
+                onChange={(event) => change('links', draft.links.map((value, position) => position === index ? event.target.value : value))}
+                aria-invalid={errors.length ? true : undefined} aria-describedby={errors.length ? `${errorId}-${field}-error` : undefined} /></label>
+              <button type="button" className="secondary-button" aria-label={`Remove link ${index + 1}`} disabled={pending}
+                onClick={() => change('links', draft.links.filter((_, position) => position !== index))}>Remove</button>
+            </div>
+            {fieldErrorGroup(field, errors)}
+          </div>
+        })}
+        {fieldErrorGroup('links', fieldErrors.links ?? [])}
+        <button type="button" className="secondary-button add-link-button" disabled={pending || draft.links.length >= 10}
+          onClick={() => change('links', [...draft.links, ''])}>Add another link</button>
+        {draft.links.length >= 10 && <p className="photo-help">Up to 10 links per gift.</p>}
+      </fieldset>
       <label>Notes <span className="optional-label">(optional)</span><textarea maxLength={5000} value={draft.notes} onChange={(event) => change('notes', event.target.value)} aria-invalid={fieldErrors.notes?.length ? true : undefined} aria-describedby={fieldErrors.notes?.length ? `${errorId}-notes-error` : undefined} /></label>
       {fieldErrorGroup('notes', fieldErrors.notes ?? [])}
       <label>Occasion <span className="optional-label">(optional)</span>

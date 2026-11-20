@@ -1,4 +1,6 @@
-export type Profile = { id: number; key: string; name: string }
+export type Profile = { id: number; key: string; name: string; avatar_url?: string | null }
+export type GiftLink = { id: number; url: string }
+export type LinkMetadata = { url: string; title: string; description: string; image_url: string | null; site_name: string; status: 'ready' | 'unavailable' }
 export type EventOption = { id: number; key: string; label: string; is_active: boolean }
 export type Session = { profile: Profile | null }
 export type Buyer = { buyer_id: number; buyer_name: string }
@@ -7,6 +9,7 @@ export type ItemBase = {
   owner_id: number
   name: string
   link: string
+  links?: GiftLink[]
   price: string
   notes: string
   event: EventOption | null
@@ -24,7 +27,8 @@ export type OtherItem = ItemBase & {
 export type Item = OwnerItem | OtherItem
 export type ItemInput = {
   name: string
-  link: string
+  link?: string
+  links?: string[]
   price?: string
   notes: string
   event_id: number | null

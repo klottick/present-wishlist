@@ -3,7 +3,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from wishlist.configuration.loader import ConfigError, load_family_config
-from wishlist.models import Event, FamilyProfile, Purchase, WishlistItem
+from wishlist.models import Event, FamilyProfile, Purchase, WishlistItem, WishlistItemLink
 
 
 DEMO_ITEMS = (
@@ -38,6 +38,8 @@ class Command(BaseCommand):
                     "allow_multiple_purchases": repeat, "event": event,
                 },
             )
+            if created:
+                WishlistItemLink.objects.create(item=item, url=link, position=0)
             if created and buyers:
                 buyer = buyers[index % len(buyers)]
                 if buyer.pk == owner.pk:

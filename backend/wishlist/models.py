@@ -6,6 +6,8 @@ class FamilyProfile(models.Model):
     config_key = models.CharField(max_length=80, unique=True)
     name = models.CharField(max_length=80)
     is_active = models.BooleanField(default=True)
+    avatar_data = models.BinaryField(default=bytes, blank=True)
+    avatar_version = models.CharField(max_length=32, blank=True, default="")
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -52,6 +54,16 @@ class WishlistItem(models.Model):
         return self.name
 
 
+class WishlistItemLink(models.Model):
+    item = models.ForeignKey(WishlistItem, on_delete=models.CASCADE, related_name="links")
+    url = models.CharField(max_length=2000)
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ("position", "id")
+        constraints = [models.UniqueConstraint(fields=("item", "url"), name="unique_url_per_item")]
+
+
 class Purchase(models.Model):
     item = models.ForeignKey(
         WishlistItem, on_delete=models.CASCADE, related_name="purchases"
@@ -67,3 +79,12 @@ class Purchase(models.Model):
                 fields=("item", "buyer"), name="unique_buyer_per_item"
             )
         ]
+
+
+class LinkPreviewCache(models.Model):
+    url = models.CharField(max_length=2000, unique=True)
+    title = models.CharField(max_length=300, blank=True, default="")
+    description = models.CharField(max_length=500, blank=True, default="")
+    image_url = models.CharField(max_length=2000, blank=True, default="")
+    succeeded = models.BooleanField(default=False)
+    attempted_at = models.DateTimeField(auto_now=True)

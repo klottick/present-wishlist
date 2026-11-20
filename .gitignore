@@ -5,6 +5,11 @@
 .env
 .env.*
 !.env.example
+
+# Local deployment configuration
+/family.yaml
+/compose.override.yaml
+
 __pycache__/
 *.py[cod]
 *.sqlite3

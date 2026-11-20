@@ -11,7 +11,9 @@ to the internet or untrusted users; accounts and TLS are not included.
 ## Features
 
 - Choose a family member's name without creating an account.
-- Add, edit and remove gifts; only the name is required, with optional links and notes.
+- Add, edit and remove gifts; only the name is required, with optional shopping links and notes.
+- Choose people from a list with one person per row, and upload your own profile photo.
+- Add up to ten shopping links per gift, with automatic title/image previews where available.
 - Organize gifts by configurable occasions or leave them as Anything.
 - Coordinate purchases on other family members' lists; purchase details are
   omitted from the recipient's API responses and interface.

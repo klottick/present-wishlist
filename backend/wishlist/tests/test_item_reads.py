@@ -34,7 +34,7 @@ class ItemReadTests(WishlistTestCase):
         detail = self.client.get(f"/api/items/{repeatable.pk}/")
         payload = next(item for item in response.json() if item["id"] == repeatable.pk)
         expected_keys = {
-            "id", "owner_id", "name", "link", "price", "notes", "event",
+            "id", "owner_id", "name", "link", "links", "price", "notes", "event",
             "allow_multiple_purchases", "created_at", "updated_at", "is_owner",
         }
         self.assertEqual(response.status_code, 200)

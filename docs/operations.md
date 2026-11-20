@@ -75,6 +75,10 @@ override; forwarded host/protocol headers are deliberately not trusted.
 
 ## Backup
 
+Profile photos and cached link metadata are included in SQLite. There is no
+separate upload volume to back up. Upgrades migrate existing single gift links
+automatically while keeping the legacy link field compatible.
+
 Backups contain all family data and the application secret. Protect them, stop
 the app before copying SQLite, and do not copy a live database file.
 

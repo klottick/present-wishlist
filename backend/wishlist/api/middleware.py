@@ -10,7 +10,13 @@ class ApiResponseMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
         if request.path.startswith("/api/"):
-            response["Cache-Control"] = "no-store"
+            is_avatar = (
+                request.resolver_match is not None
+                and request.resolver_match.url_name == "api-avatar-image"
+                and response.status_code in (200, 304)
+            )
+            if not is_avatar:
+                response["Cache-Control"] = "no-store"
             if response.status_code >= 400 and not response.get("Content-Type", "").startswith(
                 "application/json"
             ):

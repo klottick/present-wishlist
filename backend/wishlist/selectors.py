@@ -23,6 +23,7 @@ def wishlist_items(owner_id: int, event_filter: str | None = None):
         items = items.filter(Q(event=event) | Q(event__isnull=True))
 
     return items.prefetch_related(
+        "links",
         Prefetch(
             "purchases",
             queryset=Purchase.objects.select_related("buyer").order_by("created_at", "id"),
@@ -35,6 +36,7 @@ def visible_item(item_id: int) -> WishlistItem:
         return (
             WishlistItem.objects.select_related("owner", "event")
             .prefetch_related(
+                "links",
                 Prefetch(
                     "purchases",
                     queryset=Purchase.objects.select_related("buyer").order_by(

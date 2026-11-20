@@ -43,6 +43,14 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     const brandingResponse = await page.request.get(`${info.url}/api/config/`)
     expect(await brandingResponse.json()).toEqual({ family_name: 'Smith' })
     await page.getByRole('heading', { name: 'Choose your name' }).waitFor()
+    const peopleRows = await page.locator('.identity-options button').evaluateAll((buttons) => buttons.map((button) => {
+      const box = button.getBoundingClientRect(); return { x: box.x, y: box.y, bottom: box.bottom, width: box.width }
+    }))
+    expect(peopleRows).toHaveLength(3)
+    for (let index = 1; index < peopleRows.length; index++) {
+      expect(peopleRows[index].x).toBe(peopleRows[0].x)
+      expect(peopleRows[index].y).toBeGreaterThanOrEqual(peopleRows[index - 1].bottom)
+    }
     await page.getByRole('button', { name: 'Alex', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Alex’s wishlist' })).toBeVisible()
     await page.getByRole('button', { name: 'Smith Family wishlists' }).click()
@@ -79,6 +87,51 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
       await page.unroute('**/api/config/')
       await page.getByRole('button', { name: 'My wishlist' }).click()
     }
+
+    // Photos persist in the real isolated database and update all visible avatars.
+    await page.getByRole('button', { name: 'Profile photo', exact: true }).click()
+    await page.getByLabel('Choose a photo').setInputFiles({
+      name: 'profile.png', mimeType: 'image/png',
+      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=', 'base64'),
+    })
+    await page.getByRole('button', { name: 'Save photo' }).click()
+    await expect(page.getByRole('status')).toHaveText('Profile photo updated.')
+    await expect(page.locator('.current-identity .avatar img')).toBeVisible()
+    await page.reload()
+    await expect(page.locator('.wishlist-intro .avatar img')).toBeVisible()
+    await page.getByRole('button', { name: 'Profile photo', exact: true }).click()
+    await page.getByRole('button', { name: 'Remove photo' }).click()
+    await expect(page.getByRole('status')).toHaveText('Profile photo removed.')
+    await expect(page.locator('.current-identity .avatar img')).toHaveCount(0)
+
+    // Preview metadata is deterministic; the link rows and gifts use the real API.
+    await page.route('**/api/item-links/*/preview/', (route) => route.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify({
+        url: 'https://shop.example/book', title: 'A lovely book', description: 'Paperback edition',
+        image_url: null, site_name: 'shop.example', status: 'ready',
+      }),
+    }))
+    await page.getByRole('button', { name: 'Add a gift' }).click()
+    await page.getByLabel('Gift name').fill('Linked book')
+    await page.getByLabel('Link 1', { exact: true }).fill('https://shop.example/book')
+    await page.getByRole('button', { name: 'Add another link' }).click()
+    await page.getByLabel('Link 2', { exact: true }).fill('https://books.example/alternative')
+    await page.getByRole('button', { name: 'Save gift' }).click()
+    const linkedBook = giftCard(page, 'Linked book')
+    await expect(linkedBook.getByRole('link')).toHaveCount(2)
+    await expect(linkedBook.getByText('Paperback edition')).toHaveCount(2)
+    await linkedBook.getByRole('button', { name: 'Edit gift' }).click()
+    await expect(page.getByLabel('Link 2', { exact: true })).toHaveValue('https://books.example/alternative')
+    await page.getByRole('button', { name: 'Remove link 1' }).click()
+    await page.getByRole('button', { name: 'Save gift' }).click()
+    await expect(linkedBook.getByRole('link')).toHaveCount(1)
+    await expect(linkedBook.getByRole('link')).toHaveAttribute('href', 'https://books.example/alternative')
+    await page.reload()
+    await expect(giftCard(page, 'Linked book').getByRole('link')).toHaveCount(1)
+    await giftCard(page, 'Linked book').getByRole('button', { name: 'Delete gift' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete gift', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Linked book', exact: true })).toHaveCount(0)
+    await page.unroute('**/api/item-links/*/preview/')
 
     const add = async (name: string, event?: string, multiple = false) => {
       await page.getByRole('button', { name: 'Add a gift' }).click()
@@ -399,7 +452,7 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
       focusCheckDuringSamWrite: false,
       pickerDuringSamWrite: false,
       displayedIdentityAfterSamWrite: 'Sam',
-      serverIdentityAfterSamWrite: { id: samId, key: 'sam', name: 'Sam' },
+      serverIdentityAfterSamWrite: { id: samId, key: 'sam', name: 'Sam', avatar_url: null },
       displayedIdentityMatchesServer: true,
       ownBuyerWasVisible: false,
       ownerResponseStayedPrivate: true,
@@ -465,7 +518,7 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     await expect(sam.getByText('Samuel', { exact: true })).toBeVisible()
     const samSessionResponse = await sam.request.get(`${info.url}/api/session/`)
     const samSession = await samSessionResponse.json() as { profile: { id: number; key: string; name: string } }
-    expect(samSession.profile).toEqual({ id: samId, key: 'sam', name: 'Samuel' })
+    expect(samSession.profile).toEqual({ id: samId, key: 'sam', name: 'Samuel', avatar_url: null })
     await sam.getByRole('button', { name: 'Family wishlists' }).click()
     await sam.getByRole('button', { name: 'View Alex’s wishlist' }).click()
     await expect(sam.getByRole('heading', { name: 'Birthday outing' })).toBeVisible()
@@ -480,7 +533,7 @@ test('family wishlist full application workflow', async ({ browser }, testInfo) 
     expect((multiAfter as { purchases: Array<{ buyer_name: string }> }).purchases.map((mark) => mark.buyer_name)).toEqual(['Robin'])
     const profilesAfterRestartResponse = await sam.request.get(`${info.url}/api/profiles/`)
     const profilesAfterRestart = await profilesAfterRestartResponse.json() as Array<{ id: number; key: string; name: string }>
-    expect(profilesAfterRestart.find((profile) => profile.key === 'sam')).toEqual({ id: samId, key: 'sam', name: 'Samuel' })
+    expect(profilesAfterRestart.find((profile) => profile.key === 'sam')).toEqual({ id: samId, key: 'sam', name: 'Samuel', avatar_url: null })
     expect(profilesAfterRestart.find((profile) => profile.key === 'alex')?.id).toBe(alexId)
 
     // Blur leaves authenticated content and draft in place; focus safely

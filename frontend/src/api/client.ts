@@ -8,6 +8,7 @@ import type {
   OwnerItem,
   Profile,
   Session,
+  LinkMetadata,
 } from './types'
 
 export class ApiError extends Error {
@@ -28,7 +29,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   const unsafe = !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)
 
   if (unsafe) {
-    if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+    if (!headers.has('Content-Type') && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json')
     const csrfToken = readCookie('csrftoken')
     if (csrfToken) headers.set('X-CSRFToken', csrfToken)
   }
@@ -79,6 +80,20 @@ export function clearSession(): Promise<Session> {
 
 export function getProfiles(signal?: AbortSignal): Promise<Profile[]> {
   return request('/api/profiles/', { signal })
+}
+
+export function uploadAvatar(file: File): Promise<Profile> {
+  const body = new FormData()
+  body.append('photo', file)
+  return request('/api/profile/avatar/', { method: 'PUT', body })
+}
+
+export function removeAvatar(): Promise<Profile> {
+  return request('/api/profile/avatar/', { method: 'DELETE' })
+}
+
+export function getLinkPreview(id: number, signal?: AbortSignal): Promise<LinkMetadata> {
+  return request(`/api/item-links/${id}/preview/`, { method: 'POST', body: '{}', signal })
 }
 
 export function getEvents(signal?: AbortSignal): Promise<EventOption[]> {

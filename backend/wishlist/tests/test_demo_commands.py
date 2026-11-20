@@ -37,6 +37,7 @@ class DemoCommandTests(TestCase):
         self.seed()
         self.assertEqual(WishlistItem.objects.filter(demo_key__isnull=False).count(), len(first))
         self.assertEqual(len(first), 4)
+        self.assertTrue(all(list(item.links.values_list("url", flat=True)) == [item.link] for item in first))
         self.assertTrue(all(item.owner_id in [p.pk for p in FamilyProfile.objects.all()] for item in first))
         self.assertTrue(all(urlparse(item.link).hostname.endswith(".example.com") for item in first))
         self.assertEqual(

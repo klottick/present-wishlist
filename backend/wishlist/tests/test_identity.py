@@ -192,4 +192,4 @@ class IdentitySerializationTests(TestCase):
         profile = make_profile("sam", "Sam")
         from wishlist.serialization import serialize_profile
 
-        self.assertEqual(serialize_profile(profile), {"id": profile.pk, "key": "sam", "name": "Sam"})
+        self.assertEqual(serialize_profile(profile), {"id": profile.pk, "key": "sam", "name": "Sam", "avatar_url": None})

@@ -117,3 +117,42 @@ Anything is built in and represents a gift with no assigned occasion.
 
 Changing a gift's occasion preserves its purchase marks. There are no annual
 event instances or automatic purchase resets.
+
+## Profile photos
+
+Choose your name, then open **Profile photo** on **My wishlist** to upload,
+replace, or remove your picture. JPEG, PNG, and WebP files up to 5 MB and
+20 megapixels are supported. Animated images are rejected. Photos are oriented,
+center-cropped to a 256px square, and saved as JPEG without original metadata.
+People without a photo show initials. The photo appears in name selection,
+family browsing, and wishlist headings.
+
+Photos belong to the existing profile identity and are stored in the database,
+not YAML. Renaming a label preserves its photo. Existing database backups include
+photos; no separate media directory is needed. Photo reads are public within the
+app so the initial name picker can show them. Editing follows the app's existing
+selected-name trust model.
+
+## Shopping links and previews
+
+Gift forms accept up to ten HTTP/HTTPS links, in the order entered. Use **Add
+another link** or the row's **Remove** button. Blank rows are ignored and duplicate
+URLs are rejected. Existing single links migrate automatically on startup;
+editing links preserves purchase records.
+
+After a gift is saved, its links load compact previews with page titles,
+descriptions, and thumbnails where provided. The server makes bounded public
+page requests and caches successful metadata for seven days, or an unavailable
+result for one hour, with at most 512 cached URLs. Preview fetches use at most two server request threads, reserving capacity for
+normal app actions. The browser loads at most two previews at a time. Saving a
+gift never waits for this work. Private-network
+URLs, nonstandard web ports, inaccessible pages, and sites requiring scripts or
+blocking automated requests remain ordinary clickable links. Prices and stock
+are not tracked.
+
+Preview text is rendered as text. Thumbnail images load from the source website
+without a referrer, so viewing an image can contact that external image host.
+Large pages are parsed from their first 1 MiB. Pages with named product images,
+including Amazon product pages, can show those images when social metadata is
+missing. Broken images are hidden while the destination remains usable. No preview
+service account or API key is required.
